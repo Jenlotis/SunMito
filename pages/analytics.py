@@ -1,4 +1,5 @@
 import dash
+import subprocess
 import dash_daq as daq # was needed for switches
 from .utilities import render_layout
 import os
@@ -148,7 +149,48 @@ contents = html.Div(children=[
     ], id='result-tabs', style={'display': 'none'}, value='viz'),
 ])
 
+def folder_making(path_path_to_directory_with_fasta):
+    subprocess.call(["mkdir", path_path_to_directory_with_fasta + "/cleaned"])
+    subprocess.call(["mkdir", path_path_to_directory_with_fasta + "/"])
 
+    
+    
+    
+def qc_check(path_path_to_directory_with_fasta):
+    subprocess.call(["fasqc", path_path_to_directory_with_fasta])
+    subprocess.call(["multiqc", path_path_to_directory_with_fasta])# mozna dodac -o aby miec kontrole na tym gdzie pliki wyladuja
+    
+    # zrob widoczne okienko ktore bedzie zawierac wyniki z multiqc
+    # return
 
+def clean_ilu(path_path_to_directory_with_fasta):
+    ilu_file_name = ("_".split(subprocess.call(["ls", path_path_to_directory_with_fasta + "/*fastq.gz"], capture_output=True, text=True)))[0]
+    subprocess.call(["TrimmomaticPE",
+                     path_path_to_directory_with_fasta + "*1.fastq.gz", path_path_to_directory_with_fasta + "*2.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_1_out.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_1_un.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_2_out.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_2_un.fastq.gz", "ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:True", "SLIDINGWINDOW:4:20"])
+    return(ilu_file_name)
+    
+# def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
+#     procenty = subprocess.call(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
+#     print(procenty)
+    
+
+def mitobim(path_path_to_directory_with_fasta):
+
+	# starts a docker(if docker doesn't exist ona a computer crates it) then run MITObim, after mitobim end
+    ilu_file_name = ("_".split(subprocess.call(["ls", path_path_to_directory_with_fasta + "/*fastq.gz"], capture_output=True, text=True)))[0]
+    p = subprocess.call(["pwd"], capture_output=True, text=True)
+    subprocess.call(["sudo", "docker", "run", "-d", "-it", "-v", p + "/" + ilu_file_name + "/cleaned/:/home/data/input/", "-v", p + "/" + ilu_file_name + "/output/:/home/data/output/", "-v", p+"/reference/:/home/data/reference/",  "chrishah/mitobim", "/bin/bash"])
+
+    kontener = subprocess.call(["sudo", "docker", "ps", "|", "awk", "'$0", "~", "\"chrishah\"", "{print" "$1}'"], capture_output=True, text=True)
+
+    subprocess.call(["sudo docker", "exec", kontener, "/home/src/scripts/MITObim.pl", "-sample", ilu_file_name, "-ref", ilu_file_name, "-readpool", "/home/data/input/$i.Out_inter.fastq.gz", "--quick", "/home/data/reference/$REFERENCE_B", "-end", "10", "--clean", "--redirect_tmp", "/home/data/output/"])
+
+    subprocess.call(["sudo", "docker", "exec", kontener, "cp", "-r", "./iteration*", "./data/output/"])
+
+    subprocess.call(["sudo", "docker", "stop", kontener])
+    subprocess.call(["sudo", "docker", "rm", kontener])
+    
+    
+    
 def layout():
     return render_layout('Analytics', contents)
