@@ -1,7 +1,7 @@
 import dash
 import subprocess
-import dash_daq as daq # was needed for switches
-from .utilities import render_layout
+import dash_daq as daq
+from .utilities import render_layout  # Ensure this is correctly imported
 import os
 from dash import html, dcc, callback, Input, Output, State, ctx, dash_table
 import pandas as pd
@@ -25,30 +25,23 @@ def fig_to_url(in_fig, close_all=True, **save_args):
     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
     return "data:image/png;base64,{}".format(encoded)
 
-
 contents = html.Div(children=[
     dcc.Store(id='raw-df'),
     dcc.Store(id='target-df'),
     dcc.Store(id='trace-dict'),
     dcc.Store(id='annotations'),
-    # dcc.Dropdown(
-    #     options=[{'label': f'{specimen}'.replace('_', ' '), 'value': f"{data_path}/{specimen}"} for specimen in specimen_dirs[0]],
-    #     id='specimen-dropdown',
-    #     clearable=False,
-    #     placeholder='Select data to analyze'
-    # ),
     dcc.Tabs([
         dcc.Tab(children=[
             html.Br(),
             daq.ToggleSwitch(
-                id = 'path_switch',
-                value = False,
-                label = "Short Reads             Long Reads",
+                id='path_switch',
+                value=False,
+                label="Short Reads             Long Reads",
                 labelPosition='bottom',
                 style={'white-space':'pre'}
             ),
             dbc.RadioItems(
-                ['Genome', 'Chromosome'], # removed protein view bc it is unnecessary now
+                ['Genome', 'Chromosome'], 
                 inline=True,
                 style={'display': 'none'},
                 id='viz-level'
@@ -64,28 +57,27 @@ contents = html.Div(children=[
             dcc.Graph(id='single-chromosome-graph',
                       style={'display': 'none'}),
             html.Div([
-                html.B('Select a protein:'), # merged from protein window
+                html.B('Select a protein:'),
                 html.Br(),
-                dcc.Dropdown(multi=True, # allows you to choose multiple proteins at the same time
+                dcc.Dropdown(multi=True,
                              clearable=True,
                              searchable=True,
                              id='gene-select'
                 ),
-                dcc.Dropdown(multi=True, # storage for align proteins
-                             id='Aligment',
+                dcc.Dropdown(multi=True,
+                             id='Alignment',
                              style={'display':'none'}
                 ),
-                dbc.Row([ # buttons to activate new fucionalities
-                    dbc.Col(daq.BooleanSwitch(label="Alignment", labelPosition="top", id='aligment_switch', style={'display': 'none'}, on=False, disabled=False, color='#68CDA3')),
+                dbc.Row([
+                    dbc.Col(daq.BooleanSwitch(label="Alignment", labelPosition="top", id='alignment_switch', style={'display': 'none'}, on=False, disabled=False, color='#68CDA3')),
                     dbc.Col(daq.BooleanSwitch(label="Sort", labelPosition="top", id='sort_switch', style={'display': 'none'}, on=False, disabled=True, color='#68CDA3')),
                     dbc.Col(daq.BooleanSwitch(label="Scale", labelPosition="top", id='scale_switch', style={'display': 'none'}, on=False, disabled=True, color='#68CDA3'))
                 ]),
-
                 html.Br(),
-                html.Div([ # parameters for scoring of alignment
-                    dbc.Row([ 
+                html.Div([
+                    dbc.Row([
                         dbc.Col([
-                            html.B('Score treshold:'),
+                            html.B('Score threshold:'),
                             dbc.Input(
                                 id='score-threshold',
                                 value=0,
@@ -111,10 +103,9 @@ contents = html.Div(children=[
                         ])
                 ], style={'display': 'none'}, id='score-threshold-container'),
                html.Br(),
-
             ], style={'display': 'none'}, id='gene-select-container'),
             html.Div(id='results'),
-            html.Div(id='align-res'), # div for aligned proteins
+            html.Div(id='align-res'),
             html.Br(),
         ], label='Visualization', value='viz'),
         dcc.Tab(children=[
@@ -149,48 +140,77 @@ contents = html.Div(children=[
     ], id='result-tabs', style={'display': 'none'}, value='viz'),
 ])
 
-def folder_making(path_path_to_directory_with_fasta):
-    subprocess.call(["mkdir", path_path_to_directory_with_fasta + "/cleaned"])
-    subprocess.call(["mkdir", path_path_to_directory_with_fasta + "/"])
+def run_subprocess(command):
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Error running command {command}: {e}")
+        return None
 
-    
-    
-    
-def qc_check(path_path_to_directory_with_fasta):
-    subprocess.call(["fasqc", path_path_to_directory_with_fasta])
-    subprocess.call(["multiqc", path_path_to_directory_with_fasta])# mozna dodac -o aby miec kontrole na tym gdzie pliki wyladuja
-    
-    # zrob widoczne okienko ktore bedzie zawierac wyniki z multiqc
-    # return
+def folder_making(path_to_directory_with_fasta):
+    os.makedirs(os.path.join(path_to_directory_with_fasta, "cleaned"), exist_ok=True)
+    os.makedirs(path_to_directory_with_fasta, exist_ok=True)
 
-def clean_ilu(path_path_to_directory_with_fasta):
-    ilu_file_name = ("_".split(subprocess.call(["ls", path_path_to_directory_with_fasta + "/*fastq.gz"], capture_output=True, text=True)))[0]
-    subprocess.call(["TrimmomaticPE",
-                     path_path_to_directory_with_fasta + "*1.fastq.gz", path_path_to_directory_with_fasta + "*2.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_1_out.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_1_un.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_2_out.fastq.gz", path_path_to_directory_with_fasta + "/cleaned/" + ilu_file_name + "_2_un.fastq.gz", "ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:True", "SLIDINGWINDOW:4:20"])
-    return(ilu_file_name)
+def qc_check(path_to_directory_with_fasta):
+    run_subprocess(["fasqc", path_to_directory_with_fasta])
+    run_subprocess(["multiqc", path_to_directory_with_fasta])
+
+def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
+    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
+    run_subprocess([
+        "TrimmomaticPE",
+        f"{path_to_directory_with_fasta}/*1.fastq.gz",
+        f"{path_to_directory_with_fasta}/*2.fastq.gz",
+        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_out.fastq.gz",
+        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_un.fastq.gz",
+        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_out.fastq.gz",
+        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_un.fastq.gz",
+        "ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:True",
+        f"SLIDINGWINDOW:{sliding_window}:{sw_treshold}"
+    ])
+    return ilu_file_name
+
+def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
+    procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
+    print(procenty)
+    return procenty
+
+def mitfi_pair(path_to_directory_with_fasta):
+    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
+    run_subprocess([
+      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
+
+def mitobim(path_to_directory_with_fasta, reference):
+    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     
-# def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
-#     procenty = subprocess.call(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
-#     print(procenty)
+    run_subprocess([
+        "sudo", "docker", "run", "-d", "-it",
+        "-v", f"{path_to_directory_with_fasta}/{ilu_file_name}/cleaned/:/home/data/input/",
+        "-v", f"{path_to_directory_with_fasta}/{ilu_file_name}/output/:/home/data/output/",
+        "-v", f"{path_to_directory_with_fasta}/reference/:/home/data/reference/",
+        "chrishah/mitobim", "/bin/bash"
+    ])
     
-
-def mitobim(path_path_to_directory_with_fasta):
-
-	# starts a docker(if docker doesn't exist ona a computer crates it) then run MITObim, after mitobim end
-    ilu_file_name = ("_".split(subprocess.call(["ls", path_path_to_directory_with_fasta + "/*fastq.gz"], capture_output=True, text=True)))[0]
-    p = subprocess.call(["pwd"], capture_output=True, text=True)
-    subprocess.call(["sudo", "docker", "run", "-d", "-it", "-v", p + "/" + ilu_file_name + "/cleaned/:/home/data/input/", "-v", p + "/" + ilu_file_name + "/output/:/home/data/output/", "-v", p+"/reference/:/home/data/reference/",  "chrishah/mitobim", "/bin/bash"])
-
-    kontener = subprocess.call(["sudo", "docker", "ps", "|", "awk", "'$0", "~", "\"chrishah\"", "{print" "$1}'"], capture_output=True, text=True)
-
-    subprocess.call(["sudo docker", "exec", kontener, "/home/src/scripts/MITObim.pl", "-sample", ilu_file_name, "-ref", ilu_file_name, "-readpool", "/home/data/input/$i.Out_inter.fastq.gz", "--quick", "/home/data/reference/$REFERENCE_B", "-end", "10", "--clean", "--redirect_tmp", "/home/data/output/"])
-
-    subprocess.call(["sudo", "docker", "exec", kontener, "cp", "-r", "./iteration*", "./data/output/"])
-
-    subprocess.call(["sudo", "docker", "stop", kontener])
-    subprocess.call(["sudo", "docker", "rm", kontener])
+    container_id = run_subprocess([
+        "sudo", "docker", "ps", "|", "awk", "'$0 ~ \"chrishah\" {print $1}'"
+    ])
     
+    run_subprocess([
+        "sudo", "docker", "exec", container_id,
+        "/home/src/scripts/MITObim.pl", "-sample", ilu_file_name, "-ref", ilu_file_name,
+        "-readpool", f"/home/data/input/{ilu_file_name}.Out_inter.fastq.gz",
+        "--quick", f"/home/data/reference/{reference}", "-end", "10", "--clean",
+        "--redirect_tmp", "/home/data/output/"
+    ])
     
+    run_subprocess([
+        "sudo", "docker", "exec", container_id,
+        "cp", "-r", "./iteration*", "./data/output/"
+    ])
     
+    run_subprocess(["sudo", "docker", "stop", container_id])
+    run_subprocess(["sudo", "docker", "rm", container_id])
+
 def layout():
     return render_layout('Analytics', contents)
