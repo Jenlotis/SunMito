@@ -153,7 +153,7 @@ def folder_making(path_to_directory_with_fasta):
     os.makedirs(path_to_directory_with_fasta, exist_ok=True)
 
 def qc_check(path_to_directory_with_fasta):
-    run_subprocess(["fasqc", path_to_directory_with_fasta])
+    run_subprocess(["fastqc", path_to_directory_with_fasta])
     run_subprocess(["multiqc", path_to_directory_with_fasta])
 
 def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
@@ -173,13 +173,15 @@ def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
 
 def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
     procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
+    szacunek = run_subprocess(["seqkit", "stats", f"./cleaned/{ilu_file_name}.Out.fasta", "4", "|", "awk", "-v", f"dolari={ilu_file_name}", "'$1~\"./cleaned/\"dolari\".Out1.fastq", "\{print\}'", "|", "sed", "'s/,//g", "|", "awk", "'\{print", "7000000/$1*100}'"])
+    run_subprocess(["python2", "./github/MITObim/misc_scripts/downsample.py", "-s", procenty, "-r", f"./cleaned/{ilu_name_fasta}.Out.fasta", "|", "gzip", ">", f"./downsampling/{ilu_file_name}.downsam_{procenty}.fastq.gz"])
     print(procenty)
     return procenty
 
-def mitfi_pair(path_to_directory_with_fasta):
+def mitfi_pair(path_to_directory_with_fasta, procenty, referencja_m, organism):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     run_subprocess([
-      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
+      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.{procenty}", "-1", f"./downsampling/{ilu_file_name}.down_pair{procenty}.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair{procenty}.2.fastq.gz", "-r", referencja_m, "-o", organism, "--override"])
 
 def mitobim(path_to_directory_with_fasta, reference):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
