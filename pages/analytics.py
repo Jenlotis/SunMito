@@ -40,103 +40,7 @@ contents = html.Div(children=[
                 labelPosition='bottom',
                 style={'white-space':'pre'}
             ),
-            dbc.RadioItems(
-                ['Genome', 'Chromosome'], 
-                inline=True,
-                style={'display': 'none'},
-                id='viz-level'
-            ),
-            html.Div([
-                html.B('Select a chromosome:'),
-                html.Br(),
-                dcc.Dropdown(
-                    id='chromosome-select'
-                ),
-                html.Br(),
-            ], style={'display': 'none'}, id='chromosome-select-container'),
-            dcc.Graph(id='single-chromosome-graph',
-                      style={'display': 'none'}),
-            html.Div([
-                html.B('Select a protein:'),
-                html.Br(),
-                dcc.Dropdown(multi=True,
-                             clearable=True,
-                             searchable=True,
-                             id='gene-select'
-                ),
-                dcc.Dropdown(multi=True,
-                             id='Alignment',
-                             style={'display':'none'}
-                ),
-                dbc.Row([
-                    dbc.Col(daq.BooleanSwitch(label="Alignment", labelPosition="top", id='alignment_switch', style={'display': 'none'}, on=False, disabled=False, color='#68CDA3')),
-                    dbc.Col(daq.BooleanSwitch(label="Sort", labelPosition="top", id='sort_switch', style={'display': 'none'}, on=False, disabled=True, color='#68CDA3')),
-                    dbc.Col(daq.BooleanSwitch(label="Scale", labelPosition="top", id='scale_switch', style={'display': 'none'}, on=False, disabled=True, color='#68CDA3'))
-                ]),
-                html.Br(),
-                html.Div([
-                    dbc.Row([
-                        dbc.Col([
-                            html.B('Score threshold:'),
-                            dbc.Input(
-                                id='score-threshold',
-                                value=0,
-                                required=True,
-                                style={'width':125}
-                            )]),
-                        dbc.Col([
-                            html.B('Open gap score:'),
-                            dbc.Input(
-                                id='open-gap',
-                                value=-14,
-                                required=True,
-                                style={'width':125}
-                            )]),
-                        dbc.Col([
-                            html.B('Extend gap score:'),
-                            dbc.Input(
-                                id='extend-gap',
-                                value=-4,
-                                required=True,
-                                style={'width':125}
-                            )])
-                        ])
-                ], style={'display': 'none'}, id='score-threshold-container'),
-               html.Br(),
-            ], style={'display': 'none'}, id='gene-select-container'),
-            html.Div(id='results'),
-            html.Div(id='align-res'),
-            html.Br(),
         ], label='Visualization', value='viz'),
-        dcc.Tab(children=[
-            html.Br(),
-            html.B('Select the scope of statistics:'),
-            html.Br(),
-            dbc.RadioItems(
-                ['Full genome', 'Distinct chromosomes'],
-                id='stats-source-select',
-                inline=True
-            ),
-            html.Br(),
-            html.B('Select chromosome(s) for statistics:'),
-            html.Br(),
-            dcc.Dropdown(
-                id='stats-chromosome-select',
-                disabled=True,
-                multi=True,
-                clearable=True
-            ),
-            html.Br(),
-            dbc.Button(
-                'Calculate statistics',
-                id='gen-stats-button',
-                n_clicks=0,
-                class_name='col-2'
-            ),
-            html.Br(),
-            html.Br(),
-            html.Div(id='stats-results')
-        ], label='Statistics', value='stat')
     ], id='result-tabs', style={'display': 'none'}, value='viz'),
 ])
 
@@ -153,7 +57,7 @@ def folder_making(path_to_directory_with_fasta):
     os.makedirs(path_to_directory_with_fasta, exist_ok=True)
 
 def qc_check(path_to_directory_with_fasta):
-    run_subprocess(["fastqc", path_to_directory_with_fasta])
+    run_subprocess(["fasqc", path_to_directory_with_fasta])
     run_subprocess(["multiqc", path_to_directory_with_fasta])
 
 def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
@@ -173,15 +77,13 @@ def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
 
 def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
     procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
-    szacunek = run_subprocess(["seqkit", "stats", f"./cleaned/{ilu_file_name}.Out.fasta", "4", "|", "awk", "-v", f"dolari={ilu_file_name}", "'$1~\"./cleaned/\"dolari\".Out1.fastq", "\{print\}'", "|", "sed", "'s/,//g", "|", "awk", "'\{print", "7000000/$1*100}'"])
-    run_subprocess(["python2", "./github/MITObim/misc_scripts/downsample.py", "-s", procenty, "-r", f"./cleaned/{ilu_name_fasta}.Out.fasta", "|", "gzip", ">", f"./downsampling/{ilu_file_name}.downsam_{procenty}.fastq.gz"])
     print(procenty)
     return procenty
 
-def mitfi_pair(path_to_directory_with_fasta, procenty, referencja_m, organism):
+def mitfi_pair(path_to_directory_with_fasta):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     run_subprocess([
-      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.{procenty}", "-1", f"./downsampling/{ilu_file_name}.down_pair{procenty}.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair{procenty}.2.fastq.gz", "-r", referencja_m, "-o", organism, "--override"])
+      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
 
 def mitobim(path_to_directory_with_fasta, reference):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
@@ -213,6 +115,114 @@ def mitobim(path_to_directory_with_fasta, reference):
     
     run_subprocess(["sudo", "docker", "stop", container_id])
     run_subprocess(["sudo", "docker", "rm", container_id])
+    
+def novpla(path_to_directory_with_fasta, reference):
 
+    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
+    b = ["Project:",
+     "-----------------------",
+     f"Project name          = {ilu_file_name}",
+     "Type                  = mito",
+     "Genome Range          = 12000-22000",
+     "K-mer                 = 33",
+     "Max memory            = 14",
+     "Extended log          = 0",
+     "Save assembled reads  = no",
+     f"Seed Input            = {reference}"
+     "Extend seed directly  = no",
+     "Reference sequence    =",
+     "Variance detection    =",
+     "Chloroplast sequence  =",
+     "",
+     "Dataset 1:",
+     "-----------------------",
+     "Read Length           = 151",
+     "Insert size           = 300",
+     "Platform              = illumina",
+     "Single/Paired         = PE",
+     "Combined reads        =",
+     f"Forward reads         = {path_to_directory_with_fasta}/{ilu_file_name}.1.fastq.gz",
+     f"Reverse reads         = {path_to_directory_with_fasta}/{ilu_file_name}.2.fastq.gz",
+     "Store Hash            =",
+     "",
+     "Heteroplasmy:",
+     "-----------------------",
+     "MAF                   =",
+     "HP exclude list       =",
+     "PCR-free              =",
+     "",
+     "Optional:",
+     "-----------------------",
+     "Insert size auto      = yes",
+     "Use Quality Scores    = no",
+     f"Output path           = {path_to_directory_with_fasta}/{ilu_file_name}/",
+     "",
+     "",
+     "Project:",
+     "-----------------------",
+     "Project name         = Choose a name for your project, it will be used for the output files.",
+     "Type                 = (chloro/mito/mito_plant) \"chloro\" for chloroplast assembly, \"mito\" for mitochondrial assembly and",
+                           "\"mito_plant\" for mitochondrial assembly in plants.",
+     "Genome Range         = (minimum genome size-maximum genome size) The expected genome size range of the genome.",
+                            "Default value for mito: 12000-20000 / Default value for chloro: 120000-200000",
+                            "If the expected size is know, you can lower the range, this can be useful when there is a repetitive",
+                            "region, what could lead to a premature circularization of the genome.",
+     "K-mer                = (integer) This is the length of the overlap between matching reads (Default: 33).",
+                            "If reads are shorter then 90 bp or you have low coverage data, this value should be decreased down to 23.",
+                            "For reads longer then 101 bp, this value can be increased, but this is not necessary.",
+     "Max memory           = You can choose a max memory usage, suitable to automatically subsample the data or when you have limited",
+                            "memory capacity. If you have sufficient memory, leave it blank, else write your available memory in GB",
+                            "(if you have for example a 8 GB RAM laptop, put down 7 or 7.5 (don't add the unit in the config file))",
+     "Extended log         = Prints out a very extensive log, could be useful to send me when there is a problem  (0/1).",
+     "Save assembled reads = All the reads used for the assembly will be stored in seperate files (yes/no)",
+     "Seed Input           = The path to the file that contains the seed sequence.",
+     "Extend seed directly = This gives the option to extend the seed directly, in stead of finding matching reads. Only use this when your seed",
+                            "originates from the same sample and there are no possible mismatches (yes/no)",
+    "Reference (optional) = If a reference is available, you can give here the path to the fasta file.",
+                           "The assembly will still be de novo, but references of the same genus can be used as a guide to resolve",
+                           "duplicated regions in the plant mitochondria or the inverted repeat in the chloroplast.",
+                           "References from different genus haven't beeen tested yet.",
+     "Variance detection   = If you select yes, you should also have a reference sequence (previous line). It will create a vcf file",
+                            "with all the variances compared to the give reference (yes/no)",
+     "Chloroplast sequence = The path to the file that contains the chloroplast sequence (Only for mito_plant mode).",
+                            "You have to assemble the chloroplast before you assemble the mitochondria of plants!",
+     "",
+     "Dataset 1:",
+     "-----------------------",
+     "Read Length          = The read length of your reads.",
+     "Insert size          = Total insert size of your paired end reads, it doesn't have to be accurate but should be close enough.",
+     "Platform             = illumina/ion - The performance on Ion Torrent data is significantly lower",
+     "Single/Paired        = For the moment only paired end reads are supported.",
+     "Combined reads       = The path to the file that contains the combined reads (forward and reverse in 1 file)",
+     "Forward reads        = The path to the file that contains the forward reads (not necessary when there is a merged file)",
+     "Reverse reads        = The path to the file that contains the reverse reads (not necessary when there is a merged file)",
+     "Store Hash           = If you want several runs on one dataset, you can store the hash locally to speed up the process (put \"yes\" to store the hashes locally)",
+                             "To run local saved files, goto te wiki section of the github page",
+     "",
+     "Heteroplasmy:",
+     "-----------------------",
+     "MAF                  = (0.007-0.49) Minor Allele Frequency: If you want to detect heteroplasmy, first assemble the genome without this option. Then give the resulting",
+                            "sequence as a reference and as a seed input. And give the minimum minor allele frequency for this option",
+                            "(0.01 will detect heteroplasmy of >1%)",
+     "HP exclude list      = Option not yet available",
+     "PCR-free             = (yes/no) If you have a PCR-free library write yes",
+     "",
+     "Optional:",
+     "-----------------------",
+     "Insert size auto     = (yes/no) This will finetune your insert size automatically (Default: yes)",
+     "Use Quality Scores   = It will take in account the quality scores, only use this when reads have low quality, like with the",
+                            "300 bp reads of Illumina (yes/no)",
+     "Output path          = You can change the directory where all the output files wil be stored."]
+    with open(f"{path_to_directory_with_fasta}/{ilu_file_name}_Nconfig.txt", "w") as file:
+        file.write("\n".join(b))
+
+
+	# all things are in config file
+def novpla(path_to_directory_with_fasta,ilu_file_name):
+    run_subprocess(["perl",
+                    f"{path_to_directory_with_fasta}/github/NOVOplasty/NOVOPlasty4.3.1.pl",
+                    "-c",
+                    f"{path_to_directory_with_fasta}/{ilu_file_name}_Nconfig.txt"])
+ 
 def layout():
     return render_layout('Analytics', contents)
