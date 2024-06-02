@@ -12,6 +12,7 @@ from io import BytesIO
 import base64
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
+import time
 
 dash.register_page(__name__, path='/analytics')
 
@@ -52,13 +53,33 @@ def run_subprocess(command):
         print(f"Error running command {command}: {e}")
         return None
 
-def folder_making(path_to_directory_with_fasta):
-    os.makedirs(os.path.join(path_to_directory_with_fasta, "cleaned"), exist_ok=True)
-    os.makedirs(path_to_directory_with_fasta, exist_ok=True)
+# def folder_making(path_to_directory_with_fasta):
+#     os.makedirs(os.path.join(path_to_directory_with_fasta, "cleaned"), exist_ok=True)
 
 def qc_check(path_to_directory_with_fasta):
     run_subprocess(["fasqc", path_to_directory_with_fasta])
     run_subprocess(["multiqc", path_to_directory_with_fasta])
+
+def nano_one_file(path_to_directory_with_fasta, run_id):
+    run_subprocess(["zcat", f"{path_to_directory_with_fasta}/fasq*gz", "|", "gzip", ">", f"{run_id}.fasq.gz"])
+
+def qc_nano_pyco(path_to_ss):
+    if "pycoQC" not in run_subprocess(["conda", "env", "list"]).split():
+        run_subprocess(["conda", "create", "--name", "pycoQC"])
+        run_subprocess(["conda", "activate", "pycoQC"])
+        run_subprocess(["pip3", "install", "pycoQC"])
+    else:
+        run_subprocess(["conda", "activate", "pycoQC"])
+    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
+    run_subprocess(["pycoQC", "-f", path_to_ss, "-o",  f"pyco_{czas}.html"])
+
+def qc_nano_min(path_to_ss):
+    abspth = os.path.abspath(__file__)
+    script_directory = os.path.dirname(abspth)
+    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", path_to_ss])
+
+def clean_nano(path_to_directory_with_fasta, name, quality, min_len, max_len):
+    run_subprocess(["gunzip", "-c", f"{name}.fastq.gz", "|", "chopper", "-q", quality, "-l", min_len, "--maxlength", max_len, "|", "gzip", ">", f"{name}.cleaned.fastq.gz"])
 
 def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
@@ -70,7 +91,6 @@ def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_un.fastq.gz",
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_out.fastq.gz",
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_un.fastq.gz",
-        "ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:True",
         f"SLIDINGWINDOW:{sliding_window}:{sw_treshold}"
     ])
     return ilu_file_name
@@ -217,7 +237,6 @@ def novpla(path_to_directory_with_fasta, reference):
         file.write("\n".join(b))
 
 
-	# all things are in config file
 def novpla(path_to_directory_with_fasta,ilu_file_name):
     run_subprocess(["perl",
                     f"{path_to_directory_with_fasta}/github/NOVOplasty/NOVOPlasty4.3.1.pl",
