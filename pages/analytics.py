@@ -13,6 +13,9 @@ import base64
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 import time
+import datetime
+import io
+import pandas as pd
 
 dash.register_page(__name__, path='/analytics')
 
@@ -27,22 +30,40 @@ def fig_to_url(in_fig, close_all=True, **save_args):
     return "data:image/png;base64,{}".format(encoded)
 
 contents = html.Div(children=[
-    dcc.Store(id='raw-df'),
-    dcc.Store(id='target-df'),
-    dcc.Store(id='trace-dict'),
-    dcc.Store(id='annotations'),
-    dcc.Tabs([
-        dcc.Tab(children=[
-            html.Br(),
-            daq.ToggleSwitch(
-                id='path_switch',
-                value=False,
-                label="Short Reads             Long Reads",
-                labelPosition='bottom',
-                style={'white-space':'pre'}
-            ),
-        ], label='Visualization', value='viz'),
-    ], id='result-tabs', style={'display': 'none'}, value='viz'),
+    html.Br(),
+    dcc.Dropdown(
+        options = [
+            {'label': 'Short Reads', 'value': 'short'},
+            {'label': 'Long Reads', 'value': 'long'}
+            ],
+        id = 'path_dropdown',
+        placeholder = "Select a Path",
+        style = {'white-space':'pre'}
+    ),
+    html.Br(),
+
+    html.Div(
+        dcc.Upload(
+            id = "file_upload",
+            children = html.Div([
+                'Drag and Drop or ',
+                html.A('Select Files')
+            ]),
+            style={
+                'width': '100%',
+                'height': '60px',
+                'lineHeight': '60px',
+                'borderWidth': '1px',
+                'borderStyle': 'dashed',
+                'borderRadius': '5px',
+                'textAlign': 'center',
+                'margin': '10px',
+                'borderColor': 'rgba(0, 0, 0, 0.3)',
+                'display':'none'
+            },
+            multiple=True
+        ), id = 'upload_container'
+    ) 
 ])
 
 def run_subprocess(command):
@@ -53,8 +74,25 @@ def run_subprocess(command):
         print(f"Error running command {command}: {e}")
         return None
 
-# def folder_making(path_to_directory_with_fasta):
-#     os.makedirs(os.path.join(path_to_directory_with_fasta, "cleaned"), exist_ok=True)
+@callback(
+    Output('file_upload', 'style'),
+    Output('upload_container', 'style'),
+    Input('path_dropdown', 'value')
+)
+def toggle_upload_visibility(dropdown_value):
+    if dropdown_value:
+        return {'display': 'block'}, {'width': '100%',
+                                      'height': '60px',
+                                      'lineHeight': '60px',
+                                      'borderWidth': '1px',
+                                      'borderStyle': 'dashed',
+                                      'borderRadius': '5px',
+                                      'textAlign': 'center',
+                                      'margin': '10px',
+                                      'borderColor': 'rgba(0, 0, 0, 0.3)',
+                                      'display':'block'} 
+    return {'display': 'none'}, {'display': 'none'}
+
 
 def qc_check(path_to_directory_with_fasta):
     run_subprocess(["fasqc", path_to_directory_with_fasta])
@@ -71,12 +109,11 @@ def qc_nano_pyco(path_to_ss):
     else:
         run_subprocess(["conda", "activate", "pycoQC"])
     czas = time.strftime("%d-%m-%Y_%H:%M:%S")
-    run_subprocess(["pycoQC", "-f", path_to_ss, "-o",  f"pyco_{czas}.html"])
+    run_subprocess(["pycoQC", "-f", path_to_ss, "-o",  f"qc/pyco_{czas}.html"])
 
 def qc_nano_min(path_to_ss):
-    abspth = os.path.abspath(__file__)
-    script_directory = os.path.dirname(abspth)
-    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", path_to_ss])
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", path_to_ss, "-o", f"{script_directory}/../qc"])
 
 def clean_nano(path_to_directory_with_fasta, name, quality, min_len, max_len):
     run_subprocess(["gunzip", "-c", f"{name}.fastq.gz", "|", "chopper", "-q", quality, "-l", min_len, "--maxlength", max_len, "|", "gzip", ">", f"{name}.cleaned.fastq.gz"])
