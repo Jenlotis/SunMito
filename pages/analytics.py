@@ -29,6 +29,8 @@ def fig_to_url(in_fig, close_all=True, **save_args):
     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
     return "data:image/png;base64,{}".format(encoded)
 
+path_to_directory = "./data"
+samples_dirs = [dir_names for (dir_path, dir_names, file_names) in os.walk(path_to_directory) if dir_names]
 contents = html.Div(children=[
     html.Br(),
     dcc.Dropdown(
@@ -36,34 +38,112 @@ contents = html.Div(children=[
             {'label': 'Short Reads', 'value': 'short'},
             {'label': 'Long Reads', 'value': 'long'}
             ],
-        id = 'path_dropdown',
-        placeholder = "Select a Path",
+        id = 'tod_dropdown',
+        placeholder = "Select a type of Data you have",
         style = {'white-space':'pre'}
     ),
-    html.Br(),
-
+    
+    dcc.Dropdown(
+        options=[{'label': f'{sample}'.replace('_', ' '), 'value': f"{path_to_directory}/{sample}"} for sample in samples_dirs[0]],
+        id='sample-dropdown',
+        placeholder='Select a samplee to analyze'
+    ),
+    
     html.Div(
-        dcc.Upload(
-            id = "file_upload",
-            children = html.Div([
-                'Drag and Drop or ',
-                html.A('Select Files')
-            ]),
-            style={
-                'width': '100%',
-                'height': '60px',
-                'lineHeight': '60px',
-                'borderWidth': '1px',
-                'borderStyle': 'dashed',
-                'borderRadius': '5px',
-                'textAlign': 'center',
-                'margin': '10px',
-                'borderColor': 'rgba(0, 0, 0, 0.3)',
-                'display':'none'
-            },
-            multiple=True
-        ), id = 'upload_container'
-    ) 
+        dcc.Dropdown(
+            options = [
+                {'label': 'MITObim', 'value': 'mitobim'},
+                {'label': 'NOVOPlasty', 'value': 'novoplasty'},
+                {"label": "MitoFinder", "value": "mitofinder"}
+            ],
+            id = 'path_dropdown',
+            placeholder = "Select a Path",
+            style={"display":"none"}
+        )
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run NOVOPlasty",
+        id = "novopla_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run QC",
+        id = "qc_ilu_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run trimming",
+        id = "trimming_ilu_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run MITObim",
+        id = "mitobim_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run downsampling",
+        id = "downsampling_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run MitoFinder",
+        id = "mitofi_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run merger",
+        id = "merg_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+    
+    html.Br(),
+    html.Button(
+        "Run QC",
+        id = "qc_nano_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    ),
+ 
+
+    
+    html.Br(),
+    html.Button(
+        "Run trimming",
+        id = "trimming_nano_button",
+        n_clicks = 0,
+        style={"display":"none"}
+    )
+    
+    # html.Br(),
+    # html.Button(
+    #     "Run",
+    #     id = "_button",
+    #     n_clicks = 0,
+    #     style={"display":"none"}
+    # )
+
 ])
 
 def run_subprocess(command):
@@ -73,26 +153,6 @@ def run_subprocess(command):
     except subprocess.CalledProcessError as e:
         print(f"Error running command {command}: {e}")
         return None
-
-@callback(
-    Output('file_upload', 'style'),
-    Output('upload_container', 'style'),
-    Input('path_dropdown', 'value')
-)
-def toggle_upload_visibility(dropdown_value):
-    if dropdown_value:
-        return {'display': 'block'}, {'width': '100%',
-                                      'height': '60px',
-                                      'lineHeight': '60px',
-                                      'borderWidth': '1px',
-                                      'borderStyle': 'dashed',
-                                      'borderRadius': '5px',
-                                      'textAlign': 'center',
-                                      'margin': '10px',
-                                      'borderColor': 'rgba(0, 0, 0, 0.3)',
-                                      'display':'block'} 
-    return {'display': 'none'}, {'display': 'none'}
-
 
 def qc_check(path_to_directory_with_fasta):
     run_subprocess(["fasqc", path_to_directory_with_fasta])
@@ -115,10 +175,10 @@ def qc_nano_min(path_to_ss):
     script_directory = os.path.dirname(os.path.abspath(__file__))
     run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", path_to_ss, "-o", f"{script_directory}/../qc"])
 
-def clean_nano(path_to_directory_with_fasta, name, quality, min_len, max_len):
+def clean_nano(path_to_directory_with_fasta, name, quality=15, min_len=300, max_len=50000000):
     run_subprocess(["gunzip", "-c", f"{name}.fastq.gz", "|", "chopper", "-q", quality, "-l", min_len, "--maxlength", max_len, "|", "gzip", ">", f"{name}.cleaned.fastq.gz"])
 
-def clean_ilu(path_to_directory_with_fasta, sliding_window, sw_treshold):
+def clean_ilu(path_to_directory_with_fasta, sliding_window=4, sw_treshold=20):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     run_subprocess([
         "TrimmomaticPE",
