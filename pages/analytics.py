@@ -93,16 +93,14 @@ contents = html.Div(children=[
         html.Button(
             "Run good QC",
             id = "qc_good_nano_button",
-            n_clicks = 0,
-            style={"display":"none"}
+            n_clicks = 0
         ),
         html.Br(),
         html.P("If you have don't seqencing summary files push this button to do QC"),
         html.Button(
             "Run FastQC",
             id = "qc_nano_button",
-            n_clicks = 0,
-            style={"display":"none"}
+            n_clicks = 0
         )
     ]),
     html.Br(),
@@ -244,12 +242,14 @@ def qc_ilu_check(n_clicks, path_to_directory_with_fasta):
     return {"display":"block"}
 
 @callback(
-    Input("merge_button","n_clicks"),
-    State("sample_dropdown","value"),
+    Output("marge_button", "style"),
+    Input("merge_button", "n_clicks"),
+    State("sample_dropdown", "value"),
     prevent_initial_call=True
 )
 def nano_one_file(path_to_directory_with_fasta, run_id):
     subprocess.run(["zcat", f"{path_to_directory_with_fasta}/fasq*gz", "|", "gzip", ">", f"{run_id}.fasq.gz"])
+    return dash.no_update
 
 @callback(
     Output("trimming_nano_button", "style"),
@@ -285,6 +285,7 @@ def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len
     return {"display":"block"}
 
 @callback(
+    Output("trimming_nano_button", "style", allow_duplicate=True),
     Input("trimming_nano_button","n_clicks"),
     State("sample_dropdown","value"),
     State("ilu_sw_tresh", "value"),
@@ -304,6 +305,7 @@ def clean_ilu(n_clicks, path_to_directory_with_fasta, sw_treshold=20, minlen=60)
         f"SLIDINGWINDOW:4:{sw_treshold}",
         f"MINLEN:{minlen}"
     ])
+    return dash.no_update
 
 def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
     procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
@@ -316,6 +318,7 @@ def mitfi_pair(path_to_directory_with_fasta):
       "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
 
 @callback(
+    Output("trimming_nano_button", "style", allow_duplicate=True),
     Input("mitobim_button", "n_clicks"),
     State("sample_dropdown", "value"),
     prevent_initial_call=True
@@ -345,6 +348,7 @@ def mitobim(n_clicks, path_to_directory_with_fasta, reference):
     ])
     subprocess.run(["sudo", "docker", "stop", container_id])
     subprocess.run(["sudo", "docker", "rm", container_id])
+    return dash.no_update
     
 def novpla(path_to_directory_with_fasta, reference):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
