@@ -31,8 +31,8 @@ def fig_to_url(in_fig, close_all=True, **save_args):
 
 path_to_directory = "./data"
 samples_dirs = [dir_names for (dir_path, dir_names, file_names) in os.walk(path_to_directory) if dir_names]
+
 contents = html.Div(children=[
-    html.Br(),
     dcc.Dropdown(
         options = [
             {'label': 'Short Reads', 'value': 'short'},
@@ -42,13 +42,17 @@ contents = html.Div(children=[
         placeholder = "Select a type of Data you have",
         style = {'white-space':'pre'}
     ),
-    
-    dcc.Dropdown(
-        options=[{'label': f'{sample}'.replace('_', ' '), 'value': f"{path_to_directory}/{sample}"} for sample in samples_dirs[0]],
-        id='sample-dropdown',
-        placeholder='Select a samplee to analyze'
+    html.Br(),
+    html.Div(    
+        dcc.Dropdown(
+            options=[{'label': f'{specimen}', 'value': f"{path_to_directory}/{specimen}"} for specimen in samples_dirs[0]],
+            id='sample_dropdown',
+            clearable=False,
+            placeholder='Select data folder to analyze',
+            style={"display":"none"}
+        ),
     ),
-    
+    html.Br(),
     html.Div(
         dcc.Dropdown(
             options = [
@@ -58,92 +62,123 @@ contents = html.Div(children=[
             ],
             id = 'path_dropdown',
             placeholder = "Select a Path",
+            style = {"display":"none"},
+            multi = True
+        )
+    ),
+    html.Br(),
+    html.Div(
+        html.Button(
+            "Run QC",
+            id = "qc_ilu_button",
+            n_clicks = 0,
             style={"display":"none"}
         )
     ),
-    
+    html.Div(id="merge_button_box",
+             style = {"display":"none"},
+             children=[
+        html.P("If yor data is separated beetwen many fastq files click here to merge them together to one file."),
+        html.Button(
+            "Run merger",
+            id = "merg_button",
+            n_clicks = 0,
+        )
+    ]),
     html.Br(),
-    html.Button(
-        "Run NOVOPlasty",
-        id = "novopla_button",
-        n_clicks = 0,
-        style={"display":"none"}
+    html.Div(id="qc_nano_box",
+             style = {"display":"none"},
+             children=[
+        html.P("If you have seqencing summary file in data/nanopor/ss folder then push this button to do QC based on that data"),
+        html.Button(
+            "Run good QC",
+            id = "qc_good_nano_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        ),
+        html.Br(),
+        html.P("If you have don't seqencing summary files push this button to do QC"),
+        html.Button(
+            "Run FastQC",
+            id = "qc_nano_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        )
+    ]),
+    html.Br(),
+    html.Div(id="trim_nano_box",
+             style={"display":"none"},
+             children=[
+        dcc.Input(id="nano_data_name",
+                  type="text",
+                  placeholder="Data name"),
+        dcc.Input(id="nano_quality",
+                  type="number",
+                  placeholder=15),
+        dcc.Input(id="nano_minlen",
+                  type="number",
+                  placeholder=300),
+        dcc.Input(id="nano_maxlen",
+                  type="number",
+                  placeholder=100000),
+        html.Button(
+            "Run trimming",
+            id = "trimming_nano_button",
+            n_clicks = 0
+        )
+    ]),
+    html.Br(),
+    html.Div(id="trim_ilu_box",
+             style={"display":"none"},
+             children=[
+        dcc.Input(id="ilu_sw_tresh",
+                  type="number",
+                  placeholder=20),
+        dcc.Input(id="ilu_minlen",
+                  type="number",
+                  placeholder=60),
+        html.Button(
+            "Run trimming",
+            id = "trimming_ilu_button",
+            n_clicks = 0
+        )
+    ]),
+    html.Br(),
+    html.Div(
+        html.Button(
+            "Run MITObim",
+            id = "mitobim_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        ),
     ),
-    
     html.Br(),
-    html.Button(
-        "Run QC",
-        id = "qc_ilu_button",
-        n_clicks = 0,
-        style={"display":"none"}
+    html.Div(
+        html.Button(
+            "Run downsampling",
+            id = "downsampling_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        )
     ),
-    
     html.Br(),
-    html.Button(
-        "Run trimming",
-        id = "trimming_ilu_button",
-        n_clicks = 0,
-        style={"display":"none"}
+    html.Div(
+        html.Button(
+            "Run MitoFinder",
+            id = "mitofi_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        )
     ),
-    
     html.Br(),
-    html.Button(
-        "Run MITObim",
-        id = "mitobim_button",
-        n_clicks = 0,
-        style={"display":"none"}
-    ),
-    
-    html.Br(),
-    html.Button(
-        "Run downsampling",
-        id = "downsampling_button",
-        n_clicks = 0,
-        style={"display":"none"}
-    ),
-    
-    html.Br(),
-    html.Button(
-        "Run MitoFinder",
-        id = "mitofi_button",
-        n_clicks = 0,
-        style={"display":"none"}
-    ),
-    
-    html.Br(),
-    html.Button(
-        "Run merger",
-        id = "merg_button",
-        n_clicks = 0,
-        style={"display":"none"}
-    ),
-    
-    html.Br(),
-    html.Button(
-        "Run QC",
-        id = "qc_nano_button",
-        n_clicks = 0,
-        style={"display":"none"}
-    ),
- 
-
-    
-    html.Br(),
-    html.Button(
-        "Run trimming",
-        id = "trimming_nano_button",
-        n_clicks = 0,
-        style={"display":"none"}
+    html.Div(
+        html.Button(
+            "Run NOVOPlasty",
+            id = "novopla_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        )
     )
-    
-    # html.Br(),
-    # html.Button(
-    #     "Run",
-    #     id = "_button",
-    #     n_clicks = 0,
-    #     style={"display":"none"}
-    # )
-
 ])
 
 def run_subprocess(command):
@@ -154,14 +189,75 @@ def run_subprocess(command):
         print(f"Error running command {command}: {e}")
         return None
 
-def qc_check(path_to_directory_with_fasta):
-    run_subprocess(["fasqc", path_to_directory_with_fasta])
-    run_subprocess(["multiqc", path_to_directory_with_fasta])
+@callback(
+    Output("path_dropdown", "style"),
+    Output("merg_button", "style"),
+    Output("qc_nano_box", "style"),
+    Output("sample_dropdown","style"),
+    Input("tod_dropdown", "value"),
+    prevent_initial_call=True 
+)
+def view_starter(tod):
+    if tod == "short":
+        return {"display":"block"}, {"display":"none"}, {"display":"none"}, {"display":"block"}
+    elif tod == "long":
+        return {"display":"none"}, {"display":"block"}, {"display":"block"}, {"display":"block"}
+    else:
+        return {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}
 
+@callback(
+    Output("qc_ilu_button", "style"),
+    Output("novopla_button", "style"),
+    Input("path_dropdown", "value"),
+    prevent_initial_call=True 
+)
+def path_starter(path):
+    if path == "mitofinder" or path == "mitobim":
+        return {"display":"block"}, {"display":"none"}
+    elif path == "novoplasty":
+        return {"display":"none"}, {"display":"block"}
+    else:
+        return {"display":"none"}, {"display":"none"}
+        
+@callback(
+    Output("trimming_nano_box", "style"),
+    Input("qc_nano_button", "n_clicks"),
+    State("sample_dropdown", "value"),
+    prevent_initial_call=True
+)
+def qc_nano_check(n_clicks, path_to_directory_with_fasta):
+    for i in run_subprocess(["find", path_to_directory_with_fasta, "-name", "*gz"]).split():
+        subprocess.run(["fastqc", i, "-o", "qc"])
+    subprocess.run(["multiqc","-o", "qc", "qc"])
+    return {"display":"block"}
+
+@callback(
+    Output("trim_ilu_box", "style"),
+    Input("qc_ilu_button", "n_clicks"),
+    State("sample_dropdown", "value"),
+    prevent_initial_call=True
+)
+def qc_ilu_check(n_clicks, path_to_directory_with_fasta):
+    for i in run_subprocess(["find", path_to_directory_with_fasta, "-name", "*gz"]).split():
+        subprocess.run(["fastqc", i, "-o", "qc"])
+    subprocess.run(["multiqc","-o", "qc", "qc"])
+    return {"display":"block"}
+
+@callback(
+    Input("merge_button","n_clicks"),
+    State("sample_dropdown","value"),
+    prevent_initial_call=True
+)
 def nano_one_file(path_to_directory_with_fasta, run_id):
-    run_subprocess(["zcat", f"{path_to_directory_with_fasta}/fasq*gz", "|", "gzip", ">", f"{run_id}.fasq.gz"])
+    subprocess.run(["zcat", f"{path_to_directory_with_fasta}/fasq*gz", "|", "gzip", ">", f"{run_id}.fasq.gz"])
 
-def qc_nano_pyco(path_to_ss):
+@callback(
+    Output("trimming_nano_button", "style"),
+    Input("qc_good_nano_button", "n_clicks"),
+    State("sample_dropdown", "value"),
+    prevent_initial_call=True
+)
+def qc_nano_good(n_clicks, path_to_directory_with_fasta):
     if "pycoQC" not in run_subprocess(["conda", "env", "list"]).split():
         run_subprocess(["conda", "create", "--name", "pycoQC"])
         run_subprocess(["conda", "activate", "pycoQC"])
@@ -169,16 +265,33 @@ def qc_nano_pyco(path_to_ss):
     else:
         run_subprocess(["conda", "activate", "pycoQC"])
     czas = time.strftime("%d-%m-%Y_%H:%M:%S")
-    run_subprocess(["pycoQC", "-f", path_to_ss, "-o",  f"qc/pyco_{czas}.html"])
-
-def qc_nano_min(path_to_ss):
+    run_subprocess(["pycoQC", "-f", f"{path_to_directory_with_fasta}/ss", "-o",  f"qc/pyco_{czas}.html"])
     script_directory = os.path.dirname(os.path.abspath(__file__))
-    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", path_to_ss, "-o", f"{script_directory}/../qc"])
+    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", f"{path_to_directory_with_fasta}/ss", "-o", f"{script_directory}/../qc"])
+    return {"display":"block"}
 
-def clean_nano(path_to_directory_with_fasta, name, quality=15, min_len=300, max_len=50000000):
-    run_subprocess(["gunzip", "-c", f"{name}.fastq.gz", "|", "chopper", "-q", quality, "-l", min_len, "--maxlength", max_len, "|", "gzip", ">", f"{name}.cleaned.fastq.gz"])
+@callback(
+    Output("mitobim_button","style"),
+    Input("trimming_nano_button","n_clicks"),
+    State("nano_data_name", "value"),
+    State("nano_quality", "value"),
+    State("nano_minlen", "value"),
+    State("nano_maxlen", "value"),
+    State("sample_dropdown","value"),
+    prevent_initial_call=True
+)
+def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len=300, max_len=50000000):
+    subprocess.run(["gunzip", "-c", f"{path_to_directory_with_fasta}{name}.fastq.gz", "|", "chopper", "-q", quality, "-l", min_len, "--maxlength", max_len, "|", "gzip", ">", f"{name}.cleaned.fastq.gz"])
+    return {"display":"block"}
 
-def clean_ilu(path_to_directory_with_fasta, sliding_window=4, sw_treshold=20):
+@callback(
+    Input("trimming_nano_button","n_clicks"),
+    State("sample_dropdown","value"),
+    State("ilu_sw_tresh", "value"),
+    State("ilu_minlen", "value"),
+    prevent_initial_call=True
+)
+def clean_ilu(n_clicks, path_to_directory_with_fasta, sw_treshold=20, minlen=60):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     run_subprocess([
         "TrimmomaticPE",
@@ -188,9 +301,9 @@ def clean_ilu(path_to_directory_with_fasta, sliding_window=4, sw_treshold=20):
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_un.fastq.gz",
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_out.fastq.gz",
         f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_un.fastq.gz",
-        f"SLIDINGWINDOW:{sliding_window}:{sw_treshold}"
+        f"SLIDINGWINDOW:4:{sw_treshold}",
+        f"MINLEN:{minlen}"
     ])
-    return ilu_file_name
 
 def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
     procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
@@ -202,39 +315,38 @@ def mitfi_pair(path_to_directory_with_fasta):
     run_subprocess([
       "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
 
-def mitobim(path_to_directory_with_fasta, reference):
-    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
-    
-    run_subprocess([
+@callback(
+    Input("mitobim_button", "n_clicks"),
+    State("sample_dropdown", "value"),
+    prevent_initial_call=True
+)
+def mitobim(n_clicks, path_to_directory_with_fasta, reference):
+    file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
+    subprocess.run([
         "sudo", "docker", "run", "-d", "-it",
-        "-v", f"{path_to_directory_with_fasta}/{ilu_file_name}/cleaned/:/home/data/input/",
-        "-v", f"{path_to_directory_with_fasta}/{ilu_file_name}/output/:/home/data/output/",
-        "-v", f"{path_to_directory_with_fasta}/reference/:/home/data/reference/",
+        "-v", f"{path_to_directory_with_fasta}/{file_name}/cleaned/:/home/data/input/",
+        "-v", f"{path_to_directory_with_fasta}/{file_name}/output/:/home/data/output/",
+        "-v", f"reference/:/home/data/reference/",
         "chrishah/mitobim", "/bin/bash"
     ])
-    
     container_id = run_subprocess([
         "sudo", "docker", "ps", "|", "awk", "'$0 ~ \"chrishah\" {print $1}'"
     ])
-    
-    run_subprocess([
+    subprocess.run([
         "sudo", "docker", "exec", container_id,
-        "/home/src/scripts/MITObim.pl", "-sample", ilu_file_name, "-ref", ilu_file_name,
-        "-readpool", f"/home/data/input/{ilu_file_name}.Out_inter.fastq.gz",
+        "/home/src/scripts/MITObim.pl", "-sample", file_name, "-ref", file_name,
+        "-readpool", f"/home/data/input/{file_name}.Out_inter.fastq.gz",
         "--quick", f"/home/data/reference/{reference}", "-end", "10", "--clean",
         "--redirect_tmp", "/home/data/output/"
     ])
-    
-    run_subprocess([
+    subprocess.run([
         "sudo", "docker", "exec", container_id,
         "cp", "-r", "./iteration*", "./data/output/"
     ])
-    
-    run_subprocess(["sudo", "docker", "stop", container_id])
-    run_subprocess(["sudo", "docker", "rm", container_id])
+    subprocess.run(["sudo", "docker", "stop", container_id])
+    subprocess.run(["sudo", "docker", "rm", container_id])
     
 def novpla(path_to_directory_with_fasta, reference):
-
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
     b = ["Project:",
      "-----------------------",
