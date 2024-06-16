@@ -35,6 +35,11 @@ samples_dir = [dir_names for (dir_path, dir_names, file_names) in os.walk(path_t
 path_to_ref = "./reference"
 ref_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_ref) if file_names]
 
+path_to_ss = "./data/long/ss"
+ss_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_ss) if file_names]
+
+path_to_cleaned = "./cleaned"
+
 contents = html.Div(children=[
     dcc.Dropdown(
         options = [
@@ -92,6 +97,10 @@ contents = html.Div(children=[
              style = {"display":"none"},
              children=[
         html.P("If you have seqencing summary file in data/nanopor/ss folder then push this button to do QC based on that data"),
+        dcc.Dropdown(
+            options=[{'label': f'{ss}', 'value': f"{path_to_ss}/{ss}"} for ss in ss_files[0]],
+            id='ss_dropdown',
+            placeholder='Select sequencing summary to analyze'),
         html.Button(
             "Run good QC",
             id = "qc_good_nano_button",
@@ -136,9 +145,11 @@ contents = html.Div(children=[
              children=[
         dcc.Input(id="ilu_sw_tresh",
                   type="number",
+                  value=20,
                   placeholder=20),
         dcc.Input(id="ilu_minlen",
                   type="number",
+                  value=60,
                   placeholder=60),
         html.Button(
             "Run trimming",
@@ -154,6 +165,22 @@ contents = html.Div(children=[
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_dropdown',
             placeholder='Select reference to analyze'),
+        dcc.Dropdown(
+            options=[],
+            id='cleaned_dropdown',
+            placeholder='Select file to analyze'),
+        html.P("Choose length of bait sequence"),
+        dcc.Input(id='kbait_nano',
+                  type="number",
+                  placeholder=31,
+                  value=31
+                  ),
+        html.P("Choose number of iteratons that MITOBim will try to do"),
+        dcc.Input(id='iter_nano',
+                  type="number",
+                  placeholder=10,
+                  value=10
+                  ),
         html.Button(
             "Run MITObim",
             id = "mitobim_button",
@@ -268,37 +295,41 @@ def qc_ilu_check(n_clicks, path_to_directory_with_fasta):
     prevent_initial_call=True
 )
 def nano_one_file(path_to_directory_with_fasta, run_id):
-    subprocess.run(["zcat", f"{path_to_directory_with_fasta}/fasq*gz", "|", "gzip", ">", f"{run_id}.fasq.gz"])
+    with open("programs/merge_nano.sh", "w") as file:
+        file.write(f"zcat {path_to_directory_with_fasta}/fasq*gz | gzip > {run_id}.fasq.gz")
+    subprocess.run(["chmod","+x","programs/merge_nano.sh"])
+    subprocess.run(["bash", "./programs/merge_nano.sh"])
     return dash.no_update
 
 @callback(
     Output("trimming_nano_box", "style", allow_duplicate=True),
     Input("qc_good_nano_button", "n_clicks"),
     State("sample_dropdown", "value"),
+    State("ss_dropdown","value"),
     prevent_initial_call=True
 )
-def qc_nano_good(n_clicks, path_to_directory_with_fasta):
+def qc_nano_good(n_clicks, path_to_directory_with_fasta, seq_sum):
     if "pycoQC" not in run_subprocess(["conda", "env", "list"]).split():
-        run_subprocess(["conda", "create", "--name", "pycoQC"])
-        run_subprocess(["conda", "activate", "pycoQC"])
-        run_subprocess(["pip3", "install", "pycoQC"])
+        subprocess.run(["conda", "create", "--name", "pycoQC"])
+        subprocess.run(["conda", "activate", "pycoQC"])
+        subprocess.run(["pip3", "install", "pycoQC"])
     else:
-        run_subprocess(["conda", "activate", "pycoQC"])
+        subprocess.run(["conda", "init"])
+        subprocess.run(["conda", "activate", "pycoQC"])
     czas = time.strftime("%d-%m-%Y_%H:%M:%S")
-    run_subprocess(["pycoQC", "-f", f"{path_to_directory_with_fasta}/ss", "-o",  f"qc/pyco_{czas}.html"])
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    run_subprocess(["Rscript", f"{script_directory}/../programs/MinIONQC.R", "-i", f"{path_to_directory_with_fasta}/ss", "-o", f"{script_directory}/../qc"])
+    subprocess.run(["pycoQC", "-f", seq_sum, "-o",  f"qc/pyco_{czas}.html"])
+    subprocess.run(["Rscript", "programs/MinIONQC.R", "-i", seq_sum, "-o", "qc"])
     return {"display":"block"}
 
 @callback(
     Output("mitobim_box","style"),
+    Output("cleaned_dropdown", "options"),
     Input("trimming_nano_button","n_clicks"),
     State("sample_dropdown","value"),
     State("nano_data_name", "value"),
     State("nano_quality", "value"),
     State("nano_minlen", "value"),
     State("nano_maxlen", "value"),
-
     prevent_initial_call=True
 )
 def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len=300, max_len=50000000):
@@ -306,7 +337,9 @@ def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len
         file.write(f"gunzip -c {path_to_directory_with_fasta}/{name}.fastq.gz | chopper -q {quality} -l {min_len} --maxlength {max_len} | gzip > cleaned/{name}.cleaned.fastq.gz")
     subprocess.run(["chmod", "+x", "programs/trim_nano.sh"])
     subprocess.run(["bash", "./programs/trim_nano.sh"])
-    return {"display":"block"}
+    cleaned_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names]
+    options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in cleaned_files[0]]
+    return {"display":"block"}, options
 
 @callback(
     Output("trimming_nano_button", "style", allow_duplicate=True),
@@ -343,14 +376,15 @@ def mitfi_pair(path_to_directory_with_fasta):
 
 @callback(
     Output("trimming_nano_button", "style", allow_duplicate=True),
-    
     Input("mitobim_button", "n_clicks"),
-    State("sample_dropdown", "value"),
     State('ref_dropdown', "value"),
+    State('cleaned_dropdown', "value"),
+    State('kbait_nano', "value"),
+    State('iter_nano', "value"),
     prevent_initial_call=True
 )
-def mitobim(n_clicks, path_to_directory_with_fasta, reference):
-    file_name = run_subprocess(["ls", "cleaned/"]).split()[0]
+def mitobim(n_clicks, reference, file_name, kbait=31, iterations=10):
+    file_name=file_name.split("/")[-1]
     path=os.getcwd()
     with open("programs/make_mitobim.sh", "w") as file:
         file.write(f"sudo docker run -d -it -v {path}/cleaned/:/home/data/input/ -v {path}/output/:/home/data/output/ -v {path}/reference/:/home/data/reference/ chrishah/mitobim /bin/bash")
@@ -360,10 +394,10 @@ def mitobim(n_clicks, path_to_directory_with_fasta, reference):
     with open("programs/name_mitobim.sh", "w") as file:
         file.write("sudo docker ps | awk '$0 ~ \"chrishah\" {print $1}'")
     subprocess.run(["chmod", "+x", "programs/name_mitobim.sh"])
-    container_id=run_subprocess(["bash", "./programs/name_mitobim.sh"])
+    container_id=run_subprocess(["bash", "./programs/name_mitobim.sh"])[0]
     reference=reference.split("/")[-1]    
     with open("programs/run_mitobim.sh", "w") as file:
-        file.write(f"sudo docker exec {container_id} /home/src/scripts/MITObim.pl -sample {file_name} -ref {file_name} -readpool /home/data/input/{file_name} --quick /home/data/reference/{reference} -end 10 --clean --redirect_tmp /home/data/output/")
+        file.write(f"sudo docker exec {container_id} /home/src/scripts/MITObim.pl -sample {file_name} -ref {file_name} -readpool /home/data/input/{file_name} --quick /home/data/reference/{reference} -end {iterations} --kbait {kbait} --clean --redirect_tmp /home/data/output/")
     subprocess.run(["chmod", "+x", "programs/run_mitobim.sh"])
     subprocess.run(["bash", "./programs/run_mitobim.sh"])
     
