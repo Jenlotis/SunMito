@@ -118,17 +118,21 @@ contents = html.Div(children=[
     html.Div(id="trimming_nano_box",
              style={"display":"none"},
              children=[
+        html.P("Choose data(pozniej bedzie dropdown, teraz trzeba wpisac nazwe: nazwa.fastq.gz"),
         dcc.Input(id="nano_data_name",
                   type="text",
                   placeholder="Data name"),
+        html.P("Quality treshold"),
         dcc.Input(id="nano_quality",
                   type="number",
                   value=15,
                   placeholder=15),
+        html.P("Minimal length of the read"),
         dcc.Input(id="nano_minlen",
                   type="number",
                   value=300,
                   placeholder=300),
+        html.P("Maximal length of the read"),
         dcc.Input(id="nano_maxlen",
                   type="number",
                   value=100000,
@@ -242,10 +246,12 @@ def view_starter(tod):
 @callback(
     Output("merge_button_box", "style"),
     Output("qc_nano_box", "style"),
-    Input("sample_dropdown","value"),    
+    Input("sample_dropdown","value"), 
+    State("tod_dropdown", "value"),
+    prevent_initial_call=True 
 )
-def nano_starter(folder):
-    if folder:
+def nano_starter(folder, tod):
+    if tod == "long":
         return {"display":"block"}, {"display":"block"}
     else:
         return {"display":"none"}, {"display":"none"}
@@ -389,18 +395,19 @@ def mitobim(n_clicks, reference, file_name, kbait=31, iterations=10):
     with open("programs/make_mitobim.sh", "w") as file:
         file.write(f"sudo docker run -d -it -v {path}/cleaned/:/home/data/input/ -v {path}/output/:/home/data/output/ -v {path}/reference/:/home/data/reference/ chrishah/mitobim /bin/bash")
     subprocess.run(["chmod", "+x", "programs/make_mitobim.sh"])
-    subprocess.run(["bash", "./programs/make_mitobim.sh"])
-    
+    subprocess.run(["bash", "./programs/make_mitobim.sh"]) 
+
     with open("programs/name_mitobim.sh", "w") as file:
         file.write("sudo docker ps | awk '$0 ~ \"chrishah\" {print $1}'")
     subprocess.run(["chmod", "+x", "programs/name_mitobim.sh"])
     container_id=run_subprocess(["bash", "./programs/name_mitobim.sh"])[0]
-    reference=reference.split("/")[-1]    
+    reference=reference.split("/")[-1]
+
     with open("programs/run_mitobim.sh", "w") as file:
         file.write(f"sudo docker exec {container_id} /home/src/scripts/MITObim.pl -sample {file_name} -ref {file_name} -readpool /home/data/input/{file_name} --quick /home/data/reference/{reference} -end {iterations} --kbait {kbait} --clean --redirect_tmp /home/data/output/")
     subprocess.run(["chmod", "+x", "programs/run_mitobim.sh"])
     subprocess.run(["bash", "./programs/run_mitobim.sh"])
-    
+
     with open("programs/move_mitobim.sh","w") as file:
         file.write(f"sudo docker exec {container_id} cp -r ./iteration* ./data/output/")
     subprocess.run(["chmod", "+x", "programs/move_mitobim.sh"])
