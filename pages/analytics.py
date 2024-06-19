@@ -74,14 +74,21 @@ contents = html.Div(children=[
         )
     ),
     html.Br(),
-    html.Div(
+    html.Div(id="qc_ilu_box",
+             style={"display":"none"},
+             children=[
+        dcc.Dropdown(
+            options=[],
+            id='qc_ilu_dropdown',
+            placeholder='Select data to analyze',
+            multi = True
+        ),
         html.Button(
             "Run QC",
             id = "qc_ilu_button",
-            n_clicks = 0,
-            style={"display":"none"}
+            n_clicks = 0
         )
-    ),
+    ]),
     html.Div(id="merge_button_box",
              style = {"display":"none"},
              children=[
@@ -155,6 +162,11 @@ contents = html.Div(children=[
                   type="number",
                   value=60,
                   placeholder=60),
+        dcc.Dropdown(
+            options=[],
+            id='trim_ilu_dropdown',
+            placeholder='Select files to trim',
+            multi=True),
         html.Button(
             "Run trimming",
             id = "trimming_ilu_button",
@@ -189,8 +201,38 @@ contents = html.Div(children=[
             "Run MITObim",
             id = "mitobim_button",
             n_clicks = 0,
-        ),
-        html.Div(id="czas")
+        ) 
+    ]),
+    html.Br(),
+    html.Div(id="mitobim_ilu_box",
+             style={"display":"none"},
+             children=[
+        dcc.Dropdown(
+            options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
+            id='ref_ilu_dropdown',
+            placeholder='Select reference to analyze'),
+        dcc.Dropdown(
+            options=[],
+            id='cleaned_ilu_dropdown',
+            placeholder='Select file to analyze',
+            multi=True),
+        html.P("Choose length of bait sequence"),
+        dcc.Input(id='kbait_ilu',
+                  type="number",
+                  placeholder=31,
+                  value=31
+                  ),
+        html.P("Choose number of iteratons that MITOBim will try to do"),
+        dcc.Input(id='iter_ilu',
+                  type="number",
+                  placeholder=10,
+                  value=10
+                  ),
+        html.Button(
+            "Run MITObim",
+            id = "mitobim_ilu_button",
+            n_clicks = 0,
+        )
     ]),
     html.Br(),
     html.Div(
@@ -230,18 +272,29 @@ def run_subprocess(command):
         return None
 
 @callback(
-    Output("path_dropdown", "style"),
     Output("sample_dropdown","style"),
     Input("tod_dropdown", "value"),
     prevent_initial_call=True 
 )
 def view_starter(tod):
     if tod == "short":
-        return {"display":"block"}, {"display":"block"}
+        return {"display":"block"}
     elif tod == "long":
-        return {"display":"none"}, {"display":"block"}
+        return {"display":"block"}
     else:
-        return {"display":"none"}, {"display":"none"}
+        return {"display":"none"}
+
+@callback(
+    Output("path_dropdown", "style"),
+    Input("sample_dropdown","value"),
+    State("tod_dropdown", "value"),
+    prevent_initial_call=True
+)
+def ilu_starter(dane, tod):
+    if tod == "short":
+        return {"display":"block"}
+    else:
+        return {"display":"none"}
 
 @callback(
     Output("merge_button_box", "style"),
@@ -257,18 +310,20 @@ def nano_starter(folder, tod):
         return {"display":"none"}, {"display":"none"}
 
 @callback(
-    Output("qc_ilu_button", "style"),
+    Output("qc_ilu_box", "style"),
     Output("novopla_button", "style"),
+    Output("qc_ilu_dropdown", "options"),
     Input("path_dropdown", "value"),
     prevent_initial_call=True 
 )
 def path_starter(path):
-    if path == "mitofinder" or path == "mitobim":
-        return {"display":"block"}, {"display":"none"}
+    if ("mitofinder" in path) or ("mitobim" in path):
+        options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
+        return {"display":"block"}, {"display":"none"}, options
     elif path == "novoplasty":
-        return {"display":"none"}, {"display":"block"}
+        return {"display":"none"}, {"display":"block"}, dash.no_update
     else:
-        return {"display":"none"}, {"display":"none"}
+        return {"display":"none"}, {"display":"none"}, dash.no_update
         
 @callback(
     Output("trimming_nano_box", "style"),
@@ -284,15 +339,23 @@ def qc_nano_check(path_to_directory_with_fasta,n_clicks):
 
 @callback(
     Output("trim_ilu_box", "style"),
+    Output("trim_ilu_dropdown", "options"),
     Input("qc_ilu_button", "n_clicks"),
-    State("sample_dropdown", "value"),
+    State("qc_ilu_dropdown", "value"),
     prevent_initial_call=True
 )
-def qc_ilu_check(n_clicks, path_to_directory_with_fasta):
-    for i in run_subprocess(["find", path_to_directory_with_fasta, "-name", "*gz"]).split():
+def qc_ilu_check(n_clicks, chosen):
+    a=[]
+    for i in chosen:
         subprocess.run(["fastqc", i, "-o", "qc"])
-    subprocess.run(["multiqc","-o", "qc", "qc"])
-    return {"display":"block"}
+        a.append((i.split("/")[-1]).split(".")[0])
+    b = "\n".join(["qc/" + s + "_fastqc.zip" for s in a])
+    with open("programs/multiqc_ilu.sh","w") as file:
+        file.write(b)
+    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
+    subprocess.run(["multiqc","-o", f"qc/multiqc_{czas}", "-l", "programs/multiqc_ilu.sh"])
+    options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
+    return {"display":"block"}, options
 
 @callback(
     Output("marge_button", "style"),
@@ -302,7 +365,7 @@ def qc_ilu_check(n_clicks, path_to_directory_with_fasta):
 )
 def nano_one_file(path_to_directory_with_fasta, run_id):
     with open("programs/merge_nano.sh", "w") as file:
-        file.write(f"zcat {path_to_directory_with_fasta}/fasq*gz | gzip > {run_id}.fasq.gz")
+        file.write(f"zcat {path_to_directory_with_fasta}/fastq*gz | gzip > {run_id}.fasq.gz")
     subprocess.run(["chmod","+x","programs/merge_nano.sh"])
     subprocess.run(["bash", "./programs/merge_nano.sh"])
     return dash.no_update
@@ -348,27 +411,34 @@ def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len
     return {"display":"block"}, options
 
 @callback(
-    Output("trimming_nano_button", "style", allow_duplicate=True),
+    Output("cleaned_ilu_dropdown", "options"),
+    Output("mitobim_ilu_box", "style"),
     Input("trimming_ilu_button","n_clicks"),
-    State("sample_dropdown","value"),
+    State("trim_ilu_dropdown", "value"),
+    State("path_dropdown", "value"),
     State("ilu_sw_tresh", "value"),
     State("ilu_minlen", "value"),
     prevent_initial_call=True
 )
-def clean_ilu(n_clicks, path_to_directory_with_fasta, sw_treshold=20, minlen=60):
-    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
-    run_subprocess([
+def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
+    dane_1=(dane[0].split("/")[-1]).split(".")[0]
+    dane_2=(dane[1].split("/")[-1]).split(".")[0]
+    subprocess.run([
         "TrimmomaticPE",
-        f"{path_to_directory_with_fasta}/*1.fastq.gz",
-        f"{path_to_directory_with_fasta}/*2.fastq.gz",
-        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_out.fastq.gz",
-        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_1_un.fastq.gz",
-        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_out.fastq.gz",
-        f"{path_to_directory_with_fasta}/cleaned/{ilu_file_name}_2_un.fastq.gz",
+        dane[0],
+        dane[1],
+        f"cleaned/{dane_1}_out.fastq.gz",
+        f"cleaned/{dane_1}_un.fastq.gz",
+        f"cleaned/{dane_2}_out.fastq.gz",
+        f"cleaned/{dane_2}_un.fastq.gz",
         f"SLIDINGWINDOW:4:{sw_treshold}",
         f"MINLEN:{minlen}"
     ])
-    return dash.no_update
+    options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
+    if "mitobim" in path:
+        dane_0=dane_1.split("_")[0]
+        subprocess.run("reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true")
+        return options, {"display":"block"}
 
 def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
     procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
@@ -377,11 +447,10 @@ def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
 
 def mitfi_pair(path_to_directory_with_fasta):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
-    run_subprocess([
-      "python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
+    run_subprocess(["python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
 
 @callback(
-    Output("trimming_nano_button", "style", allow_duplicate=True),
+    Output("trimming_nano_button", "style"),
     Input("mitobim_button", "n_clicks"),
     State('ref_dropdown', "value"),
     State('cleaned_dropdown', "value"),
@@ -389,7 +458,7 @@ def mitfi_pair(path_to_directory_with_fasta):
     State('iter_nano', "value"),
     prevent_initial_call=True
 )
-def mitobim(n_clicks, reference, file_name, kbait=31, iterations=10):
+def mitobim_nano(n_clicks, reference, file_name, kbait=31, iterations=10):
     file_name=file_name.split("/")[-1]
     path=os.getcwd()
     with open("programs/make_mitobim.sh", "w") as file:
@@ -416,6 +485,44 @@ def mitobim(n_clicks, reference, file_name, kbait=31, iterations=10):
     subprocess.run(["sudo", "docker", "stop", container_id])
     subprocess.run(["sudo", "docker", "rm", container_id])
     return dash.no_update
+    
+@callback(
+    Output("trimming_nano_button", "style", allow_duplicate=True),
+    Input("mitobim_ilu_button", "n_clicks"),
+    State('ref_ilu_dropdown', "value"),
+    State('cleaned_ilu_dropdown', "value"),
+    State('kbait_ilu', "value"),
+    State('iter_ilu', "value"),
+    prevent_initial_call=True
+)
+def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
+    file_name=file_name.split("/")[-1]
+    path=os.getcwd()
+    with open("programs/make_mitobim.sh", "w") as file:
+        file.write(f"sudo docker run -d -it -v {path}/cleaned/:/home/data/input/ -v {path}/output/:/home/data/output/ -v {path}/reference/:/home/data/reference/ chrishah/mitobim /bin/bash")
+    subprocess.run(["chmod", "+x", "programs/make_mitobim.sh"])
+    subprocess.run(["bash", "./programs/make_mitobim.sh"]) 
+
+    with open("programs/name_mitobim.sh", "w") as file:
+        file.write("sudo docker ps | awk '$0 ~ \"chrishah\" {print $1}'")
+    subprocess.run(["chmod", "+x", "programs/name_mitobim.sh"])
+    container_id=run_subprocess(["bash", "./programs/name_mitobim.sh"])[0]
+    reference=reference.split("/")[-1]
+
+    with open("programs/run_mitobim.sh", "w") as file:
+        file.write(f"sudo docker exec {container_id} /home/src/scripts/MITObim.pl -sample {file_name} -ref {file_name} -readpool /home/data/input/{file_name} --quick /home/data/reference/{reference} -end {iterations} --kbait {kbait} --clean --redirect_tmp /home/data/output/")
+    subprocess.run(["chmod", "+x", "programs/run_mitobim.sh"])
+    subprocess.run(["bash", "./programs/run_mitobim.sh"])
+
+    with open("programs/move_mitobim.sh","w") as file:
+        file.write(f"sudo docker exec {container_id} cp -r ./iteration* ./data/output/")
+    subprocess.run(["chmod", "+x", "programs/move_mitobim.sh"])
+    subprocess.run(["bash", "./programs/move_mitobim.sh"])
+    
+    subprocess.run(["sudo", "docker", "stop", container_id])
+    subprocess.run(["sudo", "docker", "rm", container_id])
+    return dash.no_update
+    
     
 def novpla(path_to_directory_with_fasta, reference):
     ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
