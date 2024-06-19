@@ -4,6 +4,7 @@ pip install numpy
 pip install pandas
 pip install plotly
 pip install multiqc
+sudo apt-get install --assume-yes bbmap
 sudo apt-get install --assume-yes fastqc
 sudo apt-get install --assume-yes conda
 conda install -c bioconda install chopper
