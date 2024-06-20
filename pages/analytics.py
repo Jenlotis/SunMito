@@ -204,6 +204,73 @@ contents = html.Div(children=[
         ) 
     ]),
     html.Br(),
+    html.Div(id="downsampling_box",
+             style={"display":"none"},
+             children=[
+        html.Button(
+            "Calculate estimate",
+            id = "downsampling_check_button",
+            n_clicks = 0
+        ),
+        html.P(id="down_text",
+               children=[]
+        ),
+        dcc.Input(id="percent",
+                  type="number",
+                  placeholder="",
+                  value="5",
+                  style={"display":"none"}
+        ),
+        html.Button(
+            "Run downsampling",
+            id = "downsampling_button",
+            n_clicks = 0,
+            style={"display":"none"}
+        )
+    ]),
+    html.Br(),
+    html.Div(id="mitfi_box",
+             style={"display":"none"},
+             children=[
+        dcc.Dropdown(
+            options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
+            id='ref_mitfi_dropdown',
+            placeholder='Select reference to analyze'),
+        dcc.Dropdown(
+            id="org_mitfi_dropdown",
+            options=[
+                {"label": "The Standard Code", "value": 1},
+                {"label": "The Vertebrate Mitochondrial Code", "value": 2},
+                {"label": "The Yeast Mitochondrial Code", "value": 3},
+                {"label": "The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma Code", "value": 4},
+                {"label": "The Invertebrate Mitochondrial Code", "value": 5},
+                {"label": "The Ciliate, Dasycladacean and Hexamita Nuclear Code", "value": 6},
+                {"label": "The Echinoderm and Flatworm Mitochondrial Code", "value": 9},
+                {"label": "The Euplotid Nuclear Code", "value": 10},
+                {"label": "The Bacterial, Archaeal and Plant Plastid Code", "value": 11},
+                {"label": "The Alternative Yeast Nuclear Code", "value": 12},
+                {"label": "The Ascidian Mitochondrial Code", "value": 13},
+                {"label": "The Alternative Flatworm Mitochondrial Code", "value": 14},
+                {"label": "Chlorophycean Mitochondrial Code", "value": 16},
+                {"label": "Trematode Mitochondrial Code", "value": 21},
+                {"label": "Scenedesmus obliquus Mitochondrial Code", "value": 22},
+                {"label": "Thraustochytrium Mitochondrial Code", "value": 23},
+                {"label": "Pterobranchia Mitochondrial Code", "value": 24},
+                {"label": "Candidate Division SR1 and Gracilibacteria Code", "value": 25}]
+  
+        ),
+        dcc.Dropdown(
+            options=[],
+            id='mitfi_dropdown',
+            placeholder='Select file to analyze',
+            multi=True),
+        html.Button(
+            "Run MitoFinder",
+            id = "mitfi_button",
+            n_clicks = 0
+        )
+    ]),
+    html.Br(),
     html.Div(id="mitobim_ilu_box",
              style={"display":"none"},
              children=[
@@ -228,6 +295,7 @@ contents = html.Div(children=[
                   placeholder=10,
                   value=10
                   ),
+        html.Br(),
         html.Button(
             "Run MITObim",
             id = "mitobim_ilu_button",
@@ -235,32 +303,19 @@ contents = html.Div(children=[
         )
     ]),
     html.Br(),
-    html.Div(
-        html.Button(
-            "Run downsampling",
-            id = "downsampling_button",
-            n_clicks = 0,
-            style={"display":"none"}
-        )
-    ),
-    html.Br(),
-    html.Div(
-        html.Button(
-            "Run MitoFinder",
-            id = "mitofi_button",
-            n_clicks = 0,
-            style={"display":"none"}
-        )
-    ),
-    html.Br(),
-    html.Div(
+    html.Div(id="novopla_box",
+             style={"display":"none"},
+             children=[
+        dcc.Dropdown(
+            options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
+            id='ref_novo_dropdown',
+            placeholder='Select reference to analyze'),
         html.Button(
             "Run NOVOPlasty",
             id = "novopla_button",
-            n_clicks = 0,
-            style={"display":"none"}
+            n_clicks = 0
         )
-    )
+    ])
 ])
 
 def run_subprocess(command):
@@ -311,7 +366,7 @@ def nano_starter(folder, tod):
 
 @callback(
     Output("qc_ilu_box", "style"),
-    Output("novopla_button", "style"),
+    Output("novopla_box", "style"),
     Output("qc_ilu_dropdown", "options"),
     Input("path_dropdown", "value"),
     prevent_initial_call=True 
@@ -319,7 +374,10 @@ def nano_starter(folder, tod):
 def path_starter(path):
     if ("mitofinder" in path) or ("mitobim" in path):
         options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
-        return {"display":"block"}, {"display":"none"}, options
+        if "novoplasty" in path:
+            return {"display":"block"}, {"display":"block"}, options
+        else:
+            return {"display":"block"}, {"display":"none"}, options
     elif path == "novoplasty":
         return {"display":"none"}, {"display":"block"}, dash.no_update
     else:
@@ -413,6 +471,7 @@ def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len
 @callback(
     Output("cleaned_ilu_dropdown", "options"),
     Output("mitobim_ilu_box", "style"),
+    Output("downsampling_box", "style"),
     Input("trimming_ilu_button","n_clicks"),
     State("trim_ilu_dropdown", "value"),
     State("path_dropdown", "value"),
@@ -435,19 +494,71 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
         f"MINLEN:{minlen}"
     ])
     options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
-    if "mitobim" in path:
+    if ("mitofinder" in path) and ("mitobim" in path):
         dane_0=dane_1.split("_")[0]
-        subprocess.run("reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true")
-        return options, {"display":"block"}
-
-def downsam_s2s(path_path_to_directory_with_fasta, ilu_file_name):
-    procenty = run_subprocess(["ls", path_path_to_directory_with_fasta, "|", "grep", ilu_file_name + ".down_" ], capture_output=True, text=True)
+        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
+        return options, {"display":"block"}, {"display":"block"}, options
+    elif "mitobim" in path:
+        dane_0=dane_1.split("_")[0]
+        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
+        return options, {"display":"block"}, {"display":"none"}
+    else:
+        return dash.no_update, dash.no_update, {"display":"block"}, options
+        
+@callback(
+    Output("down_text", "children"),
+    Output("percent","style"),
+    Output("percent", "placeholder"),
+    Output("percent", "value"),
+    Output("downsampling_button", "style"),
+    Output("mitfi_box", "style"),
+    Input("downsampling_check_button", "n_clicks"),
+    State("trim_ilu_dropdown", "value"),
+    prevent_initial_call=True
+)
+def downsam_check(path_path_to_directory_with_fasta, dane):
+    with open("programs/downsam_check.sh", "w") as file:
+        file.write(f"seqkit stats {dane[0]} | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
+    subprocess.run(["chmod", "+x", "programs/downsam_check.sh"])
+    procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
     print(procenty)
-    return procenty
-
-def mitfi_pair(path_to_directory_with_fasta):
-    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
-    run_subprocess(["python2", "./github/MitoFinder/mitofinder", "-j", f"{ilu_file_name}.$XXX", "-1", f"./downsampling/{ilu_file_name}.down_pair$XXX.1.fastq.gz", "-2", f"./downsampling/{ilu_file_name}.down_pair$XXX.2.fastq.gz", "-r", "$REFERENCE_M", "-o", "$ORGANISM", "--override"])
+    if float(procenty) >= 80:
+        return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}
+    else:
+        return f"Calculated percent is {procenty}%", {"display":"block"}, round(procenty), round(procenty), {"display":"block"}, dash.no_update
+    
+@callback(
+    Output("mitfi_box", "style"),
+    Output("mitfi_dropdown","options"),
+    Input("downsampling_button", "n_clicks"),
+    State("percent", "value"),
+    State("trim_ilu_dropdown", "value"),
+    prevent_initial_call=True
+)
+def downsam_do(n_clicks, percent, data):
+    name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
+    with open("programs/down.sh", "w") as file:
+        file.write(f"python2 programs/downsample.py -s {percent} --interleave -r {data[0]} -r {data[1]} | gzip > cleaned/{name}_{percent}.fastq.gz
+        reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair{percent}.1.fastq.gz out2=cleaned/{name}.down_pair{percent}.2.fastq.gz overwrite=true")
+    subprocess.run(["chmod", "+x", "programs/down.sh"])
+    subprocess.run(["bash", "./programs/down.sh"])
+    return {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
+    
+        
+@callback(
+    Output("mitfi_button", "style"),
+    Input("mitfi_button", "n_clicks"),
+    State("mitfi_dropdown", "value"),
+    State("ref_mitfi_dropdown", "value"),
+    State("org_mitfi_dropdown", "value"),
+    prevent_initial_call=True
+)
+def mitfi_pair(n_clicks, data, ref, org):
+    data_1=data[0]
+    data_2=data[1]
+    name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
+    run_subprocess(["python2", "programs/MitoFinder-master/mitofinder", "-j", name, "-1", data_1, "-2", data_2, "-r", ref, "-o", org, "--override"])
+    return dash.no_update
 
 @callback(
     Output("trimming_nano_button", "style"),
@@ -496,7 +607,7 @@ def mitobim_nano(n_clicks, reference, file_name, kbait=31, iterations=10):
     prevent_initial_call=True
 )
 def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
-    file_name=file_name.split("/")[-1]
+    file_name=(file_name[0]).split("/")[-1]
     path=os.getcwd()
     with open("programs/make_mitobim.sh", "w") as file:
         file.write(f"sudo docker run -d -it -v {path}/cleaned/:/home/data/input/ -v {path}/output/:/home/data/output/ -v {path}/reference/:/home/data/reference/ chrishah/mitobim /bin/bash")
