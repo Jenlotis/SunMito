@@ -307,12 +307,17 @@ contents = html.Div(children=[
              style={"display":"none"},
              children=[
         dcc.Dropdown(
+            options=[],
+            id="novo_data_dropdown"
+        ),
+        dcc.Dropdown(
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_novo_dropdown',
-            placeholder='Select reference to analyze'),
+            placeholder='Select reference to analyze'
+        ),
         html.Button(
             "Run NOVOPlasty",
-            id = "novopla_button",
+            id = "novo_button",
             n_clicks = 0
         )
     ])
@@ -528,7 +533,7 @@ def downsam_check(path_path_to_directory_with_fasta, dane):
         return f"Calculated percent is {procenty}%", {"display":"block"}, round(procenty), round(procenty), {"display":"block"}, dash.no_update
     
 @callback(
-    Output("mitfi_box", "style"),
+    Output("mitfi_box", "style", allow_duplicate=True),
     Output("mitfi_dropdown","options"),
     Input("downsampling_button", "n_clicks"),
     State("percent", "value"),
@@ -538,13 +543,12 @@ def downsam_check(path_path_to_directory_with_fasta, dane):
 def downsam_do(n_clicks, percent, data):
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
     with open("programs/down.sh", "w") as file:
-        file.write(f"python2 programs/downsample.py -s {percent} --interleave -r {data[0]} -r {data[1]} | gzip > cleaned/{name}_{percent}.fastq.gz
-        reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair{percent}.1.fastq.gz out2=cleaned/{name}.down_pair{percent}.2.fastq.gz overwrite=true")
+        file.write(f"""python2 programs/downsample.py -s {percent} --interleave -r {data[0]} -r {data[1]} | gzip > cleaned/{name}_{percent}.fastq.gz
+        reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair{percent}.1.fastq.gz out2=cleaned/{name}.down_pair{percent}.2.fastq.gz overwrite=true""")
     subprocess.run(["chmod", "+x", "programs/down.sh"])
     subprocess.run(["bash", "./programs/down.sh"])
     return {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
-    
-        
+          
 @callback(
     Output("mitfi_button", "style"),
     Input("mitfi_button", "n_clicks"),
@@ -633,13 +637,19 @@ def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
     subprocess.run(["sudo", "docker", "stop", container_id])
     subprocess.run(["sudo", "docker", "rm", container_id])
     return dash.no_update
-    
-    
-def novpla(path_to_directory_with_fasta, reference):
-    ilu_file_name = run_subprocess(["ls", f"{path_to_directory_with_fasta}/*fastq.gz"]).split("_")[0]
+
+@callback(
+    Output("novo_button", "style"),
+    Input("novo_button", "n_clicks"),
+    State("novo_data_dropdown", "value"),
+    prevent_initial_call=True
+)    
+def novpla(n_clics, data, reference):
+    czas=time.strftime("%d-%m-%Y_%H:%M:%S")
+    name=((data[0].split("/")[-1]).split(".")[0]).split("_")[0]
     b = ["Project:",
      "-----------------------",
-     f"Project name          = {ilu_file_name}",
+     f"Project name          = {name}",
      "Type                  = mito",
      "Genome Range          = 12000-22000",
      "K-mer                 = 33",
@@ -659,8 +669,8 @@ def novpla(path_to_directory_with_fasta, reference):
      "Platform              = illumina",
      "Single/Paired         = PE",
      "Combined reads        =",
-     f"Forward reads         = {path_to_directory_with_fasta}/{ilu_file_name}.1.fastq.gz",
-     f"Reverse reads         = {path_to_directory_with_fasta}/{ilu_file_name}.2.fastq.gz",
+     f"Forward reads         = {data[0]}",
+     f"Reverse reads         = {data[1]}",
      "Store Hash            =",
      "",
      "Heteroplasmy:",
@@ -673,73 +683,11 @@ def novpla(path_to_directory_with_fasta, reference):
      "-----------------------",
      "Insert size auto      = yes",
      "Use Quality Scores    = no",
-     f"Output path           = {path_to_directory_with_fasta}/{ilu_file_name}/",
-     "",
-     "",
-     "Project:",
-     "-----------------------",
-     "Project name         = Choose a name for your project, it will be used for the output files.",
-     "Type                 = (chloro/mito/mito_plant) \"chloro\" for chloroplast assembly, \"mito\" for mitochondrial assembly and",
-                           "\"mito_plant\" for mitochondrial assembly in plants.",
-     "Genome Range         = (minimum genome size-maximum genome size) The expected genome size range of the genome.",
-                            "Default value for mito: 12000-20000 / Default value for chloro: 120000-200000",
-                            "If the expected size is know, you can lower the range, this can be useful when there is a repetitive",
-                            "region, what could lead to a premature circularization of the genome.",
-     "K-mer                = (integer) This is the length of the overlap between matching reads (Default: 33).",
-                            "If reads are shorter then 90 bp or you have low coverage data, this value should be decreased down to 23.",
-                            "For reads longer then 101 bp, this value can be increased, but this is not necessary.",
-     "Max memory           = You can choose a max memory usage, suitable to automatically subsample the data or when you have limited",
-                            "memory capacity. If you have sufficient memory, leave it blank, else write your available memory in GB",
-                            "(if you have for example a 8 GB RAM laptop, put down 7 or 7.5 (don't add the unit in the config file))",
-     "Extended log         = Prints out a very extensive log, could be useful to send me when there is a problem  (0/1).",
-     "Save assembled reads = All the reads used for the assembly will be stored in seperate files (yes/no)",
-     "Seed Input           = The path to the file that contains the seed sequence.",
-     "Extend seed directly = This gives the option to extend the seed directly, in stead of finding matching reads. Only use this when your seed",
-                            "originates from the same sample and there are no possible mismatches (yes/no)",
-    "Reference (optional) = If a reference is available, you can give here the path to the fasta file.",
-                           "The assembly will still be de novo, but references of the same genus can be used as a guide to resolve",
-                           "duplicated regions in the plant mitochondria or the inverted repeat in the chloroplast.",
-                           "References from different genus haven't beeen tested yet.",
-     "Variance detection   = If you select yes, you should also have a reference sequence (previous line). It will create a vcf file",
-                            "with all the variances compared to the give reference (yes/no)",
-     "Chloroplast sequence = The path to the file that contains the chloroplast sequence (Only for mito_plant mode).",
-                            "You have to assemble the chloroplast before you assemble the mitochondria of plants!",
-     "",
-     "Dataset 1:",
-     "-----------------------",
-     "Read Length          = The read length of your reads.",
-     "Insert size          = Total insert size of your paired end reads, it doesn't have to be accurate but should be close enough.",
-     "Platform             = illumina/ion - The performance on Ion Torrent data is significantly lower",
-     "Single/Paired        = For the moment only paired end reads are supported.",
-     "Combined reads       = The path to the file that contains the combined reads (forward and reverse in 1 file)",
-     "Forward reads        = The path to the file that contains the forward reads (not necessary when there is a merged file)",
-     "Reverse reads        = The path to the file that contains the reverse reads (not necessary when there is a merged file)",
-     "Store Hash           = If you want several runs on one dataset, you can store the hash locally to speed up the process (put \"yes\" to store the hashes locally)",
-                             "To run local saved files, goto te wiki section of the github page",
-     "",
-     "Heteroplasmy:",
-     "-----------------------",
-     "MAF                  = (0.007-0.49) Minor Allele Frequency: If you want to detect heteroplasmy, first assemble the genome without this option. Then give the resulting",
-                            "sequence as a reference and as a seed input. And give the minimum minor allele frequency for this option",
-                            "(0.01 will detect heteroplasmy of >1%)",
-     "HP exclude list      = Option not yet available",
-     "PCR-free             = (yes/no) If you have a PCR-free library write yes",
-     "",
-     "Optional:",
-     "-----------------------",
-     "Insert size auto     = (yes/no) This will finetune your insert size automatically (Default: yes)",
-     "Use Quality Scores   = It will take in account the quality scores, only use this when reads have low quality, like with the",
-                            "300 bp reads of Illumina (yes/no)",
-     "Output path          = You can change the directory where all the output files wil be stored."]
-    with open(f"{path_to_directory_with_fasta}/{ilu_file_name}_Nconfig.txt", "w") as file:
+     f"Output path           = output/{czas}_novo"]
+    with open(f"programs/{czas}_Nconfig.txt", "w") as file:
         file.write("\n".join(b))
+    subprocess.run(["perl","programs/NOVOplasty-master/NOVOPlasty4.3.1.pl", "-c",f"programs/{czas}_Nconfig.txt"])
+    return dash.no_update
 
-
-def novpla(path_to_directory_with_fasta,ilu_file_name):
-    run_subprocess(["perl",
-                    f"{path_to_directory_with_fasta}/github/NOVOplasty/NOVOPlasty4.3.1.pl",
-                    "-c",
-                    f"{path_to_directory_with_fasta}/{ilu_file_name}_Nconfig.txt"])
- 
 def layout():
     return render_layout('Analytics', contents)
