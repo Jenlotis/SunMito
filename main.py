@@ -20,7 +20,7 @@ sidebar = dbc.Nav(
             href=page,
             active='exact'
         )
-        for (name, page) in [('Home', '/'), ('Analytics', '/analytics')]
+        for (name, page) in [('Home', '/')]
     ],
     vertical=True,
     pills=True,
