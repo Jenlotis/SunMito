@@ -17,7 +17,7 @@ import datetime
 import io
 import pandas as pd
 
-dash.register_page(__name__, path='/analytics')
+dash.register_page(__name__, path='/')
 
 def fig_to_url(in_fig, close_all=True, **save_args):
     out_img = BytesIO()
@@ -41,6 +41,7 @@ ss_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_
 path_to_cleaned = "./cleaned"
 
 contents = html.Div(children=[
+    html.H5("Select the type of data you want to analyse"),
     dcc.Dropdown(
         options = [
             {'label': 'Short Reads', 'value': 'short'},
@@ -73,7 +74,6 @@ contents = html.Div(children=[
             multi = True
         )
     ),
-    html.Br(),
     html.Div(id="qc_ilu_box",
              style={"display":"none"},
              children=[
@@ -92,65 +92,83 @@ contents = html.Div(children=[
     html.Div(id="merge_button_box",
              style = {"display":"none"},
              children=[
-        html.P("If yor data is separated beetwen many fastq files click here to merge them together to one file."),
+        html.H5("Data merging"),
+        html.P(["If yor data is separated beetwen many fastq files ", 
+                html.B("click"),
+                " here to merge them together to one file."]),
         html.Button(
             "Run merger",
             id = "merg_button",
             n_clicks = 0,
-        )
+        ),
+        html.Br(),
+        html.Br()
     ]),
-    html.Br(),
     html.Div(id="qc_nano_box",
              style = {"display":"none"},
              children=[
-        html.P("If you have seqencing summary file in data/nanopor/ss folder then push this button to do QC based on that data"),
+        html.Br(),
+        html.H5("Quality controll"),
+        html.P(["If you have seqencing summary file in ",
+                html.B("data/nanopor/ss"),
+                " folder, then push this button to do QC based on that data"]),
         dcc.Dropdown(
             options=[{'label': f'{ss}', 'value': f"{path_to_ss}/{ss}"} for ss in ss_files[0]],
             id='ss_dropdown',
             placeholder='Select sequencing summary to analyze'),
+        html.Br(),
         html.Button(
             "Run good QC",
             id = "qc_good_nano_button",
             n_clicks = 0
         ),
         html.Br(),
-        html.P("If you have don't seqencing summary files push this button to do QC"),
+        html.Br(),
+        html.P(["If you ",
+               html.B("don't"),
+               " have seqencing summary files push this button to do QC"]),
         html.Button(
             "Run FastQC",
             id = "qc_nano_button",
             n_clicks = 0
         )
     ]),
-    html.Br(),
     html.Div(id="trimming_nano_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.Br(),
+        html.H5("Trimming"),
         html.P("Choose data(pozniej bedzie dropdown, teraz trzeba wpisac nazwe: nazwa.fastq.gz"),
         dcc.Input(id="nano_data_name",
                   type="text",
                   placeholder="Data name"),
+        html.Br(),
         html.P("Quality treshold"),
         dcc.Input(id="nano_quality",
                   type="number",
                   value=15,
                   placeholder=15),
+        html.Br(),
         html.P("Minimal length of the read"),
         dcc.Input(id="nano_minlen",
                   type="number",
                   value=300,
                   placeholder=300),
+        html.Br(),
         html.P("Maximal length of the read"),
         dcc.Input(id="nano_maxlen",
                   type="number",
                   value=100000,
                   placeholder=100000),
+        html.Br(),
+        html.Br(),
         html.Button(
             "Run trimming",
             id = "trimming_nano_button",
             n_clicks = 0
         )
     ]),
-    html.Br(),
     html.Div(id="trim_ilu_box",
              style={"display":"none"},
              children=[
@@ -173,37 +191,47 @@ contents = html.Div(children=[
             n_clicks = 0
         )
     ]),
-    html.Br(),
     html.Div(id="mitobim_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.Br(),
+        html.H5("MITOBim"),
+        html.Br(),
+        html.P("Select bait/reference for MITObim"),
         dcc.Dropdown(
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_dropdown',
             placeholder='Select reference to analyze'),
+        html.Br(),
+        html.P("Select a cleaned sequence for analysis"),
         dcc.Dropdown(
             options=[],
             id='cleaned_dropdown',
             placeholder='Select file to analyze'),
+        html.Br(),
         html.P("Choose length of bait sequence"),
         dcc.Input(id='kbait_nano',
                   type="number",
                   placeholder=31,
                   value=31
                   ),
+        html.Br(),
+        html.Br(),
         html.P("Choose number of iteratons that MITOBim will try to do"),
         dcc.Input(id='iter_nano',
                   type="number",
                   placeholder=10,
                   value=10
                   ),
+        html.Br(),
+        html.Br(),
         html.Button(
             "Run MITObim",
             id = "mitobim_button",
             n_clicks = 0,
         ) 
     ]),
-    html.Br(),
     html.Div(id="downsampling_box",
              style={"display":"none"},
              children=[
@@ -228,7 +256,6 @@ contents = html.Div(children=[
             style={"display":"none"}
         )
     ]),
-    html.Br(),
     html.Div(id="mitfi_box",
              style={"display":"none"},
              children=[
@@ -257,7 +284,6 @@ contents = html.Div(children=[
                 {"label": "Thraustochytrium Mitochondrial Code", "value": 23},
                 {"label": "Pterobranchia Mitochondrial Code", "value": 24},
                 {"label": "Candidate Division SR1 and Gracilibacteria Code", "value": 25}]
-  
         ),
         dcc.Dropdown(
             options=[],
@@ -270,7 +296,6 @@ contents = html.Div(children=[
             n_clicks = 0
         )
     ]),
-    html.Br(),
     html.Div(id="mitobim_ilu_box",
              style={"display":"none"},
              children=[
@@ -301,8 +326,7 @@ contents = html.Div(children=[
             id = "mitobim_ilu_button",
             n_clicks = 0,
         )
-    ]),
-    html.Br(),
+    ]), 
     html.Div(id="novopla_box",
              style={"display":"none"},
              children=[
@@ -526,7 +550,7 @@ def downsam_check(path_path_to_directory_with_fasta, dane):
         file.write(f"seqkit stats {dane[0]} | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
     subprocess.run(["chmod", "+x", "programs/downsam_check.sh"])
     procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
-    print(procenty)
+    # print(procenty)
     if float(procenty) >= 80:
         return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}
     else:
@@ -690,4 +714,4 @@ def novpla(n_clics, data, reference):
     return dash.no_update
 
 def layout():
-    return render_layout('Analytics', contents)
+    return render_layout('SunMito', contents)
