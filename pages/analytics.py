@@ -52,15 +52,6 @@ contents = html.Div(children=[
         style = {'white-space':'pre'}
     ),
     html.Br(),
-    html.Div(    
-        dcc.Dropdown(
-            options=[{'label': f'{specimen}', 'value': f"{path_to_directory}/{specimen}"} for specimen in samples_dir[0]],
-            id='sample_dropdown',
-            placeholder='Select data folder to analyze',
-            style={"display":"none"}
-        ),
-    ),
-    html.Br(),
     html.Div(
         dcc.Dropdown(
             options = [
@@ -127,6 +118,12 @@ contents = html.Div(children=[
         html.P(["If you ",
                html.B("don't"),
                " have seqencing summary files push this button to do QC"]),
+        dcc.Dropdown(
+            options=[{'label': f'{dane}', 'value': f"data/long/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/long") if file_names][0]],
+            id='qc_dropdown',
+            placeholder='Select data to analyze',
+            multi=True),
+        html.Br(),
         html.Button(
             "Run FastQC",
             id = "qc_nano_button",
@@ -140,9 +137,10 @@ contents = html.Div(children=[
         html.Br(),
         html.H5("Trimming"),
         html.P("Choose data(pozniej bedzie dropdown, teraz trzeba wpisac nazwe: nazwa.fastq.gz"),
-        dcc.Input(id="nano_data_name",
-                  type="text",
-                  placeholder="Data name"),
+        dcc.Dropdown(
+            options=[{'label': f'{clean}', 'value': f"data/long/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk("data/long") if file_names][0]],
+            id='nano_data_name',
+            placeholder='Select data to analyze'),
         html.Br(),
         html.P("Quality treshold"),
         dcc.Input(id="nano_quality",
@@ -356,25 +354,11 @@ def run_subprocess(command):
         return None
 
 @callback(
-    Output("sample_dropdown","style"),
-    Input("tod_dropdown", "value"),
-    prevent_initial_call=True 
-)
-def view_starter(tod):
-    if tod == "short":
-        return {"display":"block"}
-    elif tod == "long":
-        return {"display":"block"}
-    else:
-        return {"display":"none"}
-
-@callback(
     Output("path_dropdown", "style"),
-    Input("sample_dropdown","value"),
-    State("tod_dropdown", "value"),
+    Input("tod_dropdown", "value"),
     prevent_initial_call=True
 )
-def ilu_starter(dane, tod):
+def ilu_starter(tod):
     if tod == "short":
         return {"display":"block"}
     else:
@@ -383,11 +367,10 @@ def ilu_starter(dane, tod):
 @callback(
     Output("merge_button_box", "style"),
     Output("qc_nano_box", "style"),
-    Input("sample_dropdown","value"), 
-    State("tod_dropdown", "value"),
+    Input("tod_dropdown", "value"),
     prevent_initial_call=True 
 )
-def nano_starter(folder, tod):
+def nano_starter(tod):
     if tod == "long":
         return {"display":"block"}, {"display":"block"}
     else:
@@ -414,14 +397,20 @@ def path_starter(path):
         
 @callback(
     Output("trimming_nano_box", "style"),
-    State("sample_dropdown", "value"),
     Input("qc_nano_button", "n_clicks"),
+    State("qc_dropdown","value"),
     prevent_initial_call=True
 )
-def qc_nano_check(path_to_directory_with_fasta,n_clicks):
-    for i in run_subprocess(["find", path_to_directory_with_fasta, "-name", "*gz"]).split():
+def qc_nano_check(n_clicks, data):
+    a=[]
+    for i in data:
         subprocess.run(["fastqc", i, "-o", "qc"])
-    subprocess.run(["multiqc","-o", "qc", "qc"])
+        a.append((i.split("/")[-1]).split(".")[0])
+    b = "\n".join(["qc/" + s + "_fastqc.zip" for s in a])
+    with open("programs/multiqc_ilu.sh","w") as file:
+        file.write(b)
+    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
+    subprocess.run(["multiqc","-o", f"qc/multiqc_long_{czas}", "-l", "programs/multiqc_ilu.sh"])
     return {"display":"block"}
 
 @callback(
@@ -440,19 +429,18 @@ def qc_ilu_check(n_clicks, chosen):
     with open("programs/multiqc_ilu.sh","w") as file:
         file.write(b)
     czas = time.strftime("%d-%m-%Y_%H:%M:%S")
-    subprocess.run(["multiqc","-o", f"qc/multiqc_{czas}", "-l", "programs/multiqc_ilu.sh"])
+    subprocess.run(["multiqc","-o", f"qc/multiqc_short_{czas}", "-l", "programs/multiqc_ilu.sh"])
     options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
     return {"display":"block"}, options
 
 @callback(
     Output("marge_button", "style"),
     Input("merge_button", "n_clicks"),
-    State("sample_dropdown", "value"),
     prevent_initial_call=True
 )
-def nano_one_file(path_to_directory_with_fasta, run_id):
+def nano_one_file(run_id):
     with open("programs/merge_nano.sh", "w") as file:
-        file.write(f"zcat {path_to_directory_with_fasta}/fastq*gz | gzip > {run_id}.fasq.gz")
+        file.write(f"zcat data/long/fastq*gz | gzip > {run_id}.fasq.gz")
     subprocess.run(["chmod","+x","programs/merge_nano.sh"])
     subprocess.run(["bash", "./programs/merge_nano.sh"])
     return dash.no_update
@@ -460,11 +448,10 @@ def nano_one_file(path_to_directory_with_fasta, run_id):
 @callback(
     Output("trimming_nano_box", "style", allow_duplicate=True),
     Input("qc_good_nano_button", "n_clicks"),
-    State("sample_dropdown", "value"),
     State("ss_dropdown","value"),
     prevent_initial_call=True
 )
-def qc_nano_good(n_clicks, path_to_directory_with_fasta, seq_sum):
+def qc_nano_good(n_clicks, seq_sum):
     if "pycoQC" not in run_subprocess(["conda", "env", "list"]).split():
         subprocess.run(["conda", "create", "--name", "pycoQC"])
         subprocess.run(["conda", "activate", "pycoQC"])
@@ -481,16 +468,16 @@ def qc_nano_good(n_clicks, path_to_directory_with_fasta, seq_sum):
     Output("mitobim_box","style"),
     Output("cleaned_dropdown", "options"),
     Input("trimming_nano_button","n_clicks"),
-    State("sample_dropdown","value"),
     State("nano_data_name", "value"),
     State("nano_quality", "value"),
     State("nano_minlen", "value"),
     State("nano_maxlen", "value"),
     prevent_initial_call=True
 )
-def clean_nano(n_clicks, path_to_directory_with_fasta, name, quality=15, min_len=300, max_len=50000000):
+def clean_nano(n_clicks, name, quality=15, min_len=300, max_len=50000000):
+    name_clea=name.split("/")[-1].split(".")[0]
     with open("programs/trim_nano.sh", "w") as file:
-        file.write(f"gunzip -c {path_to_directory_with_fasta}/{name}.fastq.gz | chopper -q {quality} -l {min_len} --maxlength {max_len} | gzip > cleaned/{name}.cleaned.fastq.gz")
+        file.write(f"gunzip -c {name} | chopper -q {quality} -l {min_len} --maxlength {max_len} | gzip > cleaned/{name_clea}.cleaned.fastq.gz")
     subprocess.run(["chmod", "+x", "programs/trim_nano.sh"])
     subprocess.run(["bash", "./programs/trim_nano.sh"])
     cleaned_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names]
