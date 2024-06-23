@@ -53,6 +53,10 @@ contents = html.Div(children=[
     ),
     html.Br(),
     html.Div(
+        id="path_box",
+        style = {"display":"none"},
+        children=[ 
+        html.H5("Choose which Path you want to take(can be multiple)"),
         dcc.Dropdown(
             options = [
                 {'label': 'MITObim', 'value': 'mitobim'},
@@ -61,19 +65,23 @@ contents = html.Div(children=[
             ],
             id = 'path_dropdown',
             placeholder = "Select a Path",
-            style = {"display":"none"},
             multi = True
         )
-    ),
+    ]),
     html.Div(id="qc_ilu_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.H5("Quality controll"),
+        html.Br(),
+        html.P("Choose data to analyze"),
         dcc.Dropdown(
             options=[],
             id='qc_ilu_dropdown',
             placeholder='Select data to analyze',
             multi = True
         ),
+        html.Br(),
         html.Button(
             "Run QC",
             id = "qc_ilu_button",
@@ -170,24 +178,37 @@ contents = html.Div(children=[
     html.Div(id="trim_ilu_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.H5("Trimming"),
+        html.P("Choose sliding window score treshold"),
         dcc.Input(id="ilu_sw_tresh",
                   type="number",
                   value=20,
                   placeholder=20),
+        html.Br(),
+        html.Br(),
+        html.P("Choose minimum length of the sequence"),
         dcc.Input(id="ilu_minlen",
                   type="number",
                   value=60,
                   placeholder=60),
+        html.Br(),
+        html.Br(),
+        html.P("Select two paired files to trim"),
         dcc.Dropdown(
             options=[],
             id='trim_ilu_dropdown',
             placeholder='Select files to trim',
             multi=True),
+        html.Br(),
         html.Button(
             "Run trimming",
             id = "trimming_ilu_button",
             n_clicks = 0
-        )
+        ),
+        html.Br(),
+        html.Br(),
+        html.P("After trimming chosen files will be interlaved to prepare them for MITOBim"),
     ]),
     html.Div(id="mitobim_box",
              style={"display":"none"},
@@ -233,14 +254,19 @@ contents = html.Div(children=[
     html.Div(id="downsampling_box",
              style={"display":"none"},
              children=[
+        html.Br(),         
+        html.H5("Downsampling"),
+        html.P("Calculate to what percentage the cleaned data must be downsampled to fit within the functional limits for the MitoFinder"),
         html.Button(
             "Calculate estimate",
             id = "downsampling_check_button",
             n_clicks = 0
         ),
+        html.Br(),
         html.P(id="down_text",
                children=[]
         ),
+        html.Br(),
         dcc.Input(id="percent",
                   type="number",
                   placeholder="",
@@ -257,12 +283,18 @@ contents = html.Div(children=[
     html.Div(id="mitfi_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.H5("MitoFinder"),
+        html.P("Select reference to analyze"),
         dcc.Dropdown(
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_mitfi_dropdown',
             placeholder='Select reference to analyze'),
+        html.Br(),
+        html.P("Choose the type of genetic code/organism you have"),
         dcc.Dropdown(
             id="org_mitfi_dropdown",
+            placeholder="Choose the type of code you have",
             options=[
                 {"label": "The Standard Code", "value": 1},
                 {"label": "The Vertebrate Mitochondrial Code", "value": 2},
@@ -283,11 +315,14 @@ contents = html.Div(children=[
                 {"label": "Pterobranchia Mitochondrial Code", "value": 24},
                 {"label": "Candidate Division SR1 and Gracilibacteria Code", "value": 25}]
         ),
+        html.Br(),
+        html.P("Select cleaned paired files to analyze(depending on the size downsompled or not)"),
         dcc.Dropdown(
             options=[],
             id='mitfi_dropdown',
             placeholder='Select file to analyze',
             multi=True),
+        html.Br(),
         html.Button(
             "Run MitoFinder",
             id = "mitfi_button",
@@ -297,27 +332,34 @@ contents = html.Div(children=[
     html.Div(id="mitobim_ilu_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.H5("MITOBim"),
+        html.P("Select bait/reference for MITObim"),
         dcc.Dropdown(
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_ilu_dropdown',
             placeholder='Select reference to analyze'),
+        html.Br(),
+        html.P("Select one file to analyze, must be interlaved"),
         dcc.Dropdown(
             options=[],
             id='cleaned_ilu_dropdown',
-            placeholder='Select file to analyze',
-            multi=True),
+            placeholder='Select file to analyze'),
+        html.Br(),
         html.P("Choose length of bait sequence"),
         dcc.Input(id='kbait_ilu',
                   type="number",
                   placeholder=31,
                   value=31
                   ),
+        html.Br(),
         html.P("Choose number of iteratons that MITOBim will try to do"),
         dcc.Input(id='iter_ilu',
                   type="number",
                   placeholder=10,
                   value=10
                   ),
+        html.Br(),
         html.Br(),
         html.Button(
             "Run MITObim",
@@ -328,15 +370,25 @@ contents = html.Div(children=[
     html.Div(id="novopla_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.H5("NOVOPlasty"),
+        html.P(["Choose data to analyze, must be ",
+                html.B("paired data,"),
+                " two files that have not been cleaned"]),
         dcc.Dropdown(
-            options=[],
-            id="novo_data_dropdown"
+            options=[{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]],
+            id="novo_data_dropdown",
+            placeholder="Choose data to analyze",
+            multi=True
         ),
+        html.Br(),
+        html.P("Choose your reference"),
         dcc.Dropdown(
             options=[{'label': f'{ref}', 'value': f"{path_to_ref}/{ref}"} for ref in ref_files[0]],
             id='ref_novo_dropdown',
             placeholder='Select reference to analyze'
         ),
+        html.Br(),
         html.Button(
             "Run NOVOPlasty",
             id = "novo_button",
@@ -354,7 +406,7 @@ def run_subprocess(command):
         return None
 
 @callback(
-    Output("path_dropdown", "style"),
+    Output("path_box", "style"),
     Input("tod_dropdown", "value"),
     prevent_initial_call=True
 )
@@ -390,7 +442,7 @@ def path_starter(path):
             return {"display":"block"}, {"display":"block"}, options
         else:
             return {"display":"block"}, {"display":"none"}, options
-    elif path == "novoplasty":
+    elif "novoplasty" in path:
         return {"display":"none"}, {"display":"block"}, dash.no_update
     else:
         return {"display":"none"}, {"display":"none"}, dash.no_update
@@ -513,13 +565,13 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     if ("mitofinder" in path) and ("mitobim" in path):
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
-        return options, {"display":"block"}, {"display":"block"}, options
+        return options, {"display":"block"}, {"display":"block"}
     elif "mitobim" in path:
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
         return options, {"display":"block"}, {"display":"none"}
     else:
-        return dash.no_update, dash.no_update, {"display":"block"}, options
+        return dash.no_update, dash.no_update, {"display":"block"}
         
 @callback(
     Output("down_text", "children"),
@@ -528,6 +580,7 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     Output("percent", "value"),
     Output("downsampling_button", "style"),
     Output("mitfi_box", "style"),
+    Output("mitfi_dropdown","options"),
     Input("downsampling_check_button", "n_clicks"),
     State("trim_ilu_dropdown", "value"),
     prevent_initial_call=True
@@ -539,13 +592,13 @@ def downsam_check(path_path_to_directory_with_fasta, dane):
     procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
     # print(procenty)
     if float(procenty) >= 80:
-        return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}
+        return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
     else:
-        return f"Calculated percent is {procenty}%", {"display":"block"}, round(procenty), round(procenty), {"display":"block"}, dash.no_update
+        return f"Calculated percentage is {procenty}%", {"display":"block"}, round(procenty), round(procenty), {"display":"block"}, dash.no_update, dash.no_update
     
 @callback(
     Output("mitfi_box", "style", allow_duplicate=True),
-    Output("mitfi_dropdown","options"),
+    Output("mitfi_dropdown","options", allow_duplicate=True),
     Input("downsampling_button", "n_clicks"),
     State("percent", "value"),
     State("trim_ilu_dropdown", "value"),
@@ -572,7 +625,7 @@ def mitfi_pair(n_clicks, data, ref, org):
     data_1=data[0]
     data_2=data[1]
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
-    run_subprocess(["python2", "programs/MitoFinder-master/mitofinder", "-j", name, "-1", data_1, "-2", data_2, "-r", ref, "-o", org, "--override"])
+    subprocess.run(["python2", "programs/MitoFinder-master/mitofinder", "-j", name, "-1", data_1, "-2", data_2, "-r", ref, "-o", org, "--override"])
     return dash.no_update
 
 @callback(
@@ -653,6 +706,7 @@ def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
     Output("novo_button", "style"),
     Input("novo_button", "n_clicks"),
     State("novo_data_dropdown", "value"),
+    State("ref_novo_dropdown", "value"),    
     prevent_initial_call=True
 )    
 def novpla(n_clics, data, reference):
