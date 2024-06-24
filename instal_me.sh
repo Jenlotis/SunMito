@@ -25,4 +25,4 @@ conda install -c bioconda chopper
 sudo apt-get install --assume-yes trimmomatic
 sudo apt-get install --assume-yes r-base
 wget -P programs https://raw.githubusercontent.com/roblanf/minion_qc/master/MinIONQC.R
-sudo apt-get install --assume-yes docker
+sudo apt-get install --assume-yes docker.io
