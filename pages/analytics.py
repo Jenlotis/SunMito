@@ -108,24 +108,7 @@ contents = html.Div(children=[
              children=[
         html.Br(),
         html.H5("Quality controll"),
-        html.P(["If you have seqencing summary file in ",
-                html.B("data/nanopor/ss"),
-                " folder, then push this button to do QC based on that data"]),
-        dcc.Dropdown(
-            options=[{'label': f'{ss}', 'value': f"{path_to_ss}/{ss}"} for ss in ss_files[0]],
-            id='ss_dropdown',
-            placeholder='Select sequencing summary to analyze'),
-        html.Br(),
-        html.Button(
-            "Run good QC",
-            id = "qc_good_nano_button",
-            n_clicks = 0
-        ),
-        html.Br(),
-        html.Br(),
-        html.P(["If you ",
-               html.B("don't"),
-               " have seqencing summary files push this button to do QC"]),
+        html.P("Choose file/-s for QC"),
         dcc.Dropdown(
             options=[{'label': f'{dane}', 'value': f"data/long/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/long") if file_names][0]],
             id='qc_dropdown',
@@ -496,25 +479,6 @@ def nano_one_file(run_id):
     subprocess.run(["chmod","+x","programs/merge_nano.sh"])
     subprocess.run(["bash", "./programs/merge_nano.sh"])
     return dash.no_update
-
-@callback(
-    Output("trimming_nano_box", "style", allow_duplicate=True),
-    Input("qc_good_nano_button", "n_clicks"),
-    State("ss_dropdown","value"),
-    prevent_initial_call=True
-)
-def qc_nano_good(n_clicks, seq_sum):
-    if "pycoQC" not in run_subprocess(["conda", "env", "list"]).split():
-        subprocess.run(["conda", "create", "--name", "pycoQC"])
-        subprocess.run(["conda", "activate", "pycoQC"])
-        subprocess.run(["pip3", "install", "pycoQC"])
-    else:
-        subprocess.run(["conda", "init"])
-        subprocess.run(["conda", "activate", "pycoQC"])
-    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
-    subprocess.run(["pycoQC", "-f", seq_sum, "-o",  f"qc/pyco_{czas}.html"])
-    subprocess.run(["Rscript", "programs/MinIONQC.R", "-i", seq_sum, "-o", "qc"])
-    return {"display":"block"}
 
 @callback(
     Output("mitobim_box","style"),
