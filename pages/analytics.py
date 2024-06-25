@@ -121,7 +121,9 @@ contents = html.Div(children=[
             "Run FastQC",
             id = "qc_nano_button",
             n_clicks = 0
-        )
+        ),
+        html.Div(id="html_view_nano",
+                 children=[])
     ]),
     html.Div(id="trimming_nano_box",
              style={"display":"none"},
@@ -129,7 +131,7 @@ contents = html.Div(children=[
         html.Br(),
         html.Br(),
         html.H5("Trimming"),
-        html.P("Choose data(pozniej bedzie dropdown, teraz trzeba wpisac nazwe: nazwa.fastq.gz"),
+        html.P("Choose data to analyze"),
         dcc.Dropdown(
             options=[{'label': f'{clean}', 'value': f"data/long/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk("data/long") if file_names][0]],
             id='nano_data_name',
@@ -141,11 +143,13 @@ contents = html.Div(children=[
                   value=15,
                   placeholder=15),
         html.Br(),
+        html.Br(),
         html.P("Minimal length of the read"),
         dcc.Input(id="nano_minlen",
                   type="number",
                   value=300,
                   placeholder=300),
+        html.Br(),
         html.Br(),
         html.P("Maximal length of the read"),
         dcc.Input(id="nano_maxlen",
@@ -301,7 +305,7 @@ contents = html.Div(children=[
                 {"label": "Candidate Division SR1 and Gracilibacteria Code", "value": 25}]
         ),
         html.Br(),
-        html.P("Select cleaned paired files to analyze(depending on the size downsompled or not)"),
+        html.P("Select cleaned paired files to analyze(depending on the size of the data downsampled or not)"),
         dcc.Dropdown(
             options=[],
             id='mitfi_dropdown',
@@ -435,6 +439,7 @@ def path_starter(path):
         
 @callback(
     Output("trimming_nano_box", "style"),
+    Output("html_view_nano", "children"),
     Input("qc_nano_button", "n_clicks"),
     State("qc_dropdown","value"),
     prevent_initial_call=True
@@ -447,14 +452,15 @@ def qc_nano_check(n_clicks, data):
     b = "\n".join(["qc/" + s + "_fastqc.zip" for s in a])
     with open("programs/multiqc_ilu.sh","w") as file:
         file.write(b)
-    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
+    czas = time.strftime("%d-%m-%Y_%H.%M.%S")
     subprocess.run(["multiqc","-o", f"qc/multiqc_long_{czas}", "-l", "programs/multiqc_ilu.sh"])
-    return {"display":"block"}
+    subprocess.run(["cp", "-r", f"qc/multiqc_long_{czas}", f"assets/multiqc_long_{czas}"])
+    return {"display":"block"}, html.Iframe(width="100%", height="500" ,src=f"assets/multiqc_long_{czas}/multiqc_report.html")
 
 @callback(
     Output("trim_ilu_box", "style"),
     Output("trim_ilu_dropdown", "options"),
-    # Output("html_view_ilu", "children"),
+    Output("html_view_ilu", "children"),
     Input("qc_ilu_button", "n_clicks"),
     State("qc_ilu_dropdown", "value"),
     prevent_initial_call=True
@@ -470,7 +476,8 @@ def qc_ilu_check(n_clicks, chosen):
     czas = time.strftime("%d-%m-%Y_%H.%M.%S")
     subprocess.run(["multiqc","-o", f"qc/multiqc_short_{czas}", "-l", "programs/multiqc_ilu.sh"])
     options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
-    return {"display":"block"}, options
+    subprocess.run(["cp", "-r", f"qc/multiqc_long_{czas}", f"assets/multiqc_long_{czas}"])
+    return {"display":"block"}, options, html.Iframe(width="100%", height="500" ,src=f"assets/multiqc_long_{czas}/multiqc_report.html")
 
 @callback(
     Output("marge_button", "style"),
