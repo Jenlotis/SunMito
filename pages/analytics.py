@@ -86,7 +86,9 @@ contents = html.Div(children=[
             "Run QC",
             id = "qc_ilu_button",
             n_clicks = 0
-        )
+        ),
+        html.Div(id="html_view_ilu",
+                 children=[])
     ]),
     html.Div(id="merge_button_box",
              style = {"display":"none"},
@@ -336,7 +338,8 @@ contents = html.Div(children=[
                   value=31
                   ),
         html.Br(),
-        html.P("Choose number of iteratons that MITOBim will try to do"),
+        html.Br(),
+        html.P("Choose number of iteratons that MITObim will try to do"),
         dcc.Input(id='iter_ilu',
                   type="number",
                   placeholder=10,
@@ -451,6 +454,7 @@ def qc_nano_check(n_clicks, data):
 @callback(
     Output("trim_ilu_box", "style"),
     Output("trim_ilu_dropdown", "options"),
+    # Output("html_view_ilu", "children"),
     Input("qc_ilu_button", "n_clicks"),
     State("qc_ilu_dropdown", "value"),
     prevent_initial_call=True
@@ -463,7 +467,7 @@ def qc_ilu_check(n_clicks, chosen):
     b = "\n".join(["qc/" + s + "_fastqc.zip" for s in a])
     with open("programs/multiqc_ilu.sh","w") as file:
         file.write(b)
-    czas = time.strftime("%d-%m-%Y_%H:%M:%S")
+    czas = time.strftime("%d-%m-%Y_%H.%M.%S")
     subprocess.run(["multiqc","-o", f"qc/multiqc_short_{czas}", "-l", "programs/multiqc_ilu.sh"])
     options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
     return {"display":"block"}, options
@@ -528,11 +532,11 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
     if ("mitofinder" in path) and ("mitobim" in path):
         dane_0=dane_1.split("_")[0]
-        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
+        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
         return options, {"display":"block"}, {"display":"block"}
     elif "mitobim" in path:
         dane_0=dane_1.split("_")[0]
-        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.Out_inter.fastq.gz", "overwrite=true"])
+        subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
         return options, {"display":"block"}, {"display":"none"}
     else:
         return dash.no_update, dash.no_update, {"display":"block"}
@@ -550,8 +554,9 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     prevent_initial_call=True
 )
 def downsam_check(path_path_to_directory_with_fasta, dane):
+    dane_1=(dane[0].split("/")[-1]).split(".")[0]
     with open("programs/downsam_check.sh", "w") as file:
-        file.write(f"seqkit stats {dane[0]} | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
+        file.write(f"seqkit stats cleaned/{dane_1}_out.fastq.gz | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
     subprocess.run(["chmod", "+x", "programs/downsam_check.sh"])
     procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
     # print(procenty)
