@@ -4,8 +4,6 @@ import dash_daq as daq
 from .utilities import render_layout  # Ensure this is correctly imported
 import os
 from dash import html, dcc, callback, Input, Output, State, ctx, dash_table
-import pandas as pd
-import numpy as np
 from glob import glob
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -87,6 +85,7 @@ contents = html.Div(children=[
             id = "qc_ilu_button",
             n_clicks = 0
         ),
+        html.Br(),
         html.Div(id="html_view_ilu",
                  children=[])
     ]),
@@ -122,6 +121,7 @@ contents = html.Div(children=[
             id = "qc_nano_button",
             n_clicks = 0
         ),
+        html.Br(),
         html.Div(id="html_view_nano",
                  children=[])
     ]),
@@ -384,7 +384,11 @@ contents = html.Div(children=[
             id = "novo_button",
             n_clicks = 0
         )
-    ])
+    ]),
+    html.Br(),
+    html.Br(),
+    html.Br(),
+    html.Br(),
 ])
 
 def run_subprocess(command):
@@ -476,7 +480,7 @@ def qc_ilu_check(n_clicks, chosen):
     czas = time.strftime("%d-%m-%Y_%H.%M.%S")
     subprocess.run(["multiqc","-o", f"qc/multiqc_short_{czas}", "-l", "programs/multiqc_ilu.sh"])
     options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
-    subprocess.run(["cp", "-r", f"qc/multiqc_long_{czas}", f"assets/multiqc_long_{czas}"])
+    subprocess.run(["cp", "-r", f"qc/multiqc_short_{czas}", f"assets/multiqc_long_{czas}"])
     return {"display":"block"}, options, html.Iframe(width="100%", height="500" ,src=f"assets/multiqc_long_{czas}/multiqc_report.html")
 
 @callback(
@@ -560,7 +564,7 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     State("trim_ilu_dropdown", "value"),
     prevent_initial_call=True
 )
-def downsam_check(path_path_to_directory_with_fasta, dane):
+def downsam_check(n_clicks, dane):
     dane_1=(dane[0].split("/")[-1]).split(".")[0]
     with open("programs/downsam_check.sh", "w") as file:
         file.write(f"seqkit stats cleaned/{dane_1}_out.fastq.gz | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
