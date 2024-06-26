@@ -86,6 +86,11 @@ contents = html.Div(children=[
             n_clicks = 0
         ),
         html.Br(),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="qc_ilu",
+                 style={"display":"none"}
+                 ),
+        html.Br(),
         html.Div(id="html_view_ilu",
                  children=[])
     ]),
@@ -100,6 +105,10 @@ contents = html.Div(children=[
             "Run merger",
             id = "merg_button",
             n_clicks = 0,
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="merge",
+                 style={"display":"none"}
         ),
         html.Br(),
         html.Br()
@@ -122,6 +131,10 @@ contents = html.Div(children=[
             n_clicks = 0
         ),
         html.Br(),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="qc_nano",
+                 style={"display":"none"}
+        ),
         html.Div(id="html_view_nano",
                  children=[])
     ]),
@@ -162,7 +175,11 @@ contents = html.Div(children=[
             "Run trimming",
             id = "trimming_nano_button",
             n_clicks = 0
-        )
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="trim_nano",
+                 style={"display":"none"}
+        ),
     ]),
     html.Div(id="trim_ilu_box",
              style={"display":"none"},
@@ -196,6 +213,10 @@ contents = html.Div(children=[
             n_clicks = 0
         ),
         html.Br(),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="trim_ilu",
+                 style={"display":"none"}
+        ),
         html.Br(),
         html.P("After trimming chosen files will be interlaved to prepare them for MITOBim"),
     ]),
@@ -238,7 +259,11 @@ contents = html.Div(children=[
             "Run MITObim",
             id = "mitobim_button",
             n_clicks = 0,
-        ) 
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="mitobim_nano",
+                 style={"display":"none"}
+        ),
     ]),
     html.Div(id="downsampling_box",
              style={"display":"none"},
@@ -250,6 +275,10 @@ contents = html.Div(children=[
             "Calculate estimate",
             id = "downsampling_check_button",
             n_clicks = 0
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="down_che",
+                 style={"display":"none"}
         ),
         html.Br(),
         html.P(id="down_text",
@@ -267,6 +296,10 @@ contents = html.Div(children=[
             id = "downsampling_button",
             n_clicks = 0,
             style={"display":"none"}
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="down_do",
+                 style={"display":"none"}
         )
     ]),
     html.Div(id="mitfi_box",
@@ -316,7 +349,11 @@ contents = html.Div(children=[
             "Run MitoFinder",
             id = "mitfi_button",
             n_clicks = 0
-        )
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="mitfi_ilu",
+                 style={"display":"none"}
+        ),
     ]),
     html.Div(id="mitobim_ilu_box",
              style={"display":"none"},
@@ -355,6 +392,10 @@ contents = html.Div(children=[
             "Run MITObim",
             id = "mitobim_ilu_button",
             n_clicks = 0,
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="mitobim_ilu",
+                 style={"display":"none"}
         )
     ]), 
     html.Div(id="novopla_box",
@@ -383,10 +424,15 @@ contents = html.Div(children=[
             "Run NOVOPlasty",
             id = "novo_button",
             n_clicks = 0
+        ),
+        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+                 id="novopla",
+                 style={"display":"none"}
         )
     ]),
     html.Br(),
     html.Br(),
+    html.Div(id="empty"),
     html.Br(),
     html.Br(),
 ])
@@ -398,6 +444,34 @@ def run_subprocess(command):
     except subprocess.CalledProcessError as e:
         print(f"Error running command {command}: {e}")
         return None
+
+@callback(
+    Output("qc_ilu","style"),
+    Output("merge","style"),
+    Output("qc_nano","style"),
+    Output("trim_nano","style"),
+    Output("trim_ilu","style"),
+    Output("mitobim_nano","style"),
+    Output("down_che","style"),
+    Output("down_do","style"),
+    Output("mitfi_ilu","style"),
+    Output("mitobim_ilu","style"),
+    Output("novopla","style"),
+    Input("empty", "style"),
+    prevent_initial_call=True
+)
+def loading_gif(on, box):
+    out = []
+    states = ["qc_ilu", "merge", "qc_nano", "trim_nano", "trim_ilu", "mitobim_nano", "down_che","down_do", "mitfi_ilu", "mitobim_ilu", "novopla"] #, "mitfi_nano"
+    if on == "on":
+        for i in states:
+            if i == "box":
+                out.append({"display":"block"})
+            else:
+                out.append({"display":"none"})
+        return out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9],out[10], out[11]#, out[12]
+    else:
+        return {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}#, {"display":"none"}
 
 @callback(
     Output("path_box", "style"),
@@ -449,6 +523,7 @@ def path_starter(path):
     prevent_initial_call=True
 )
 def qc_nano_check(n_clicks, data):
+    loading_gif("on", "qc_nano")
     a=[]
     for i in data:
         subprocess.run(["fastqc", i, "-o", "qc"])
@@ -459,6 +534,7 @@ def qc_nano_check(n_clicks, data):
     czas = time.strftime("%d-%m-%Y_%H.%M.%S")
     subprocess.run(["multiqc","-o", f"qc/multiqc_long_{czas}", "-l", "programs/multiqc_ilu.sh"])
     subprocess.run(["cp", "-r", f"qc/multiqc_long_{czas}", f"assets/multiqc_long_{czas}"])
+    loading_gif("off", "qc_nano")
     return {"display":"block"}, html.Iframe(width="100%", height="500" ,src=f"assets/multiqc_long_{czas}/multiqc_report.html")
 
 @callback(
@@ -470,6 +546,7 @@ def qc_nano_check(n_clicks, data):
     prevent_initial_call=True
 )
 def qc_ilu_check(n_clicks, chosen):
+    loading_gif("on", "qc_ilu")
     a=[]
     for i in chosen:
         subprocess.run(["fastqc", i, "-o", "qc"])
@@ -481,6 +558,7 @@ def qc_ilu_check(n_clicks, chosen):
     subprocess.run(["multiqc","-o", f"qc/multiqc_short_{czas}", "-l", "programs/multiqc_ilu.sh"])
     options = [{'label': f'{dane}', 'value': f"data/short/{dane}"} for dane in [file_names for (dir_path, dir_names, file_names) in os.walk("data/short/") if file_names][0]]
     subprocess.run(["cp", "-r", f"qc/multiqc_short_{czas}", f"assets/multiqc_long_{czas}"])
+    loading_gif("off", "qc_ilu")
     return {"display":"block"}, options, html.Iframe(width="100%", height="500" ,src=f"assets/multiqc_long_{czas}/multiqc_report.html")
 
 @callback(
@@ -489,10 +567,12 @@ def qc_ilu_check(n_clicks, chosen):
     prevent_initial_call=True
 )
 def nano_one_file(run_id):
+    loading_gif("on", "merge")
     with open("programs/merge_nano.sh", "w") as file:
         file.write(f"zcat data/long/fastq*gz | gzip > {run_id}.fasq.gz")
     subprocess.run(["chmod","+x","programs/merge_nano.sh"])
     subprocess.run(["bash", "./programs/merge_nano.sh"])
+    loading_gif("off", "merge")
     return dash.no_update
 
 @callback(
@@ -506,6 +586,7 @@ def nano_one_file(run_id):
     prevent_initial_call=True
 )
 def clean_nano(n_clicks, name, quality=15, min_len=300, max_len=50000000):
+    loading_gif("on", "trim_nano")
     name_clea=name.split("/")[-1].split(".")[0]
     with open("programs/trim_nano.sh", "w") as file:
         file.write(f"gunzip -c {name} | chopper -q {quality} -l {min_len} --maxlength {max_len} | gzip > cleaned/{name_clea}.cleaned.fastq.gz")
@@ -513,6 +594,7 @@ def clean_nano(n_clicks, name, quality=15, min_len=300, max_len=50000000):
     subprocess.run(["bash", "./programs/trim_nano.sh"])
     cleaned_files = [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names]
     options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in cleaned_files[0]]
+    loading_gif("off", "trim_nano")
     return {"display":"block"}, options
 
 @callback(
@@ -527,6 +609,7 @@ def clean_nano(n_clicks, name, quality=15, min_len=300, max_len=50000000):
     prevent_initial_call=True
 )
 def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
+    loading_gif("on", "trim_ilu")
     dane_1=(dane[0].split("/")[-1]).split(".")[0]
     dane_2=(dane[1].split("/")[-1]).split(".")[0]
     subprocess.run([
@@ -544,12 +627,15 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     if ("mitofinder" in path) and ("mitobim" in path):
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
+        loading_gif("off", "trim_ilu")
         return options, {"display":"block"}, {"display":"block"}
     elif "mitobim" in path:
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
+        loading_gif("off", "trim_ilu")
         return options, {"display":"block"}, {"display":"none"}
     else:
+        loading_gif("off", "trim_ilu")
         return dash.no_update, dash.no_update, {"display":"block"}
         
 @callback(
@@ -565,6 +651,7 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     prevent_initial_call=True
 )
 def downsam_check(n_clicks, dane):
+    loading_gif("on", "down_che")
     dane_1=(dane[0].split("/")[-1]).split(".")[0]
     with open("programs/downsam_check.sh", "w") as file:
         file.write(f"seqkit stats cleaned/{dane_1}_out.fastq.gz | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
@@ -572,8 +659,10 @@ def downsam_check(n_clicks, dane):
     procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
     # print(procenty)
     if float(procenty) >= 80:
+        loading_gif("off", "down_che")
         return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
     else:
+        loading_gif("off", "down_che")
         return f"Calculated percentage is {procenty}%", {"display":"block"}, round(procenty), round(procenty), {"display":"block"}, dash.no_update, dash.no_update
     
 @callback(
@@ -585,12 +674,14 @@ def downsam_check(n_clicks, dane):
     prevent_initial_call=True
 )
 def downsam_do(n_clicks, percent, data):
+    loading_gif("on", "down_do")
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
     with open("programs/down.sh", "w") as file:
         file.write(f"""python2 programs/downsample.py -s {percent} --interleave -r {data[0]} -r {data[1]} | gzip > cleaned/{name}_{percent}.fastq.gz
         reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair{percent}.1.fastq.gz out2=cleaned/{name}.down_pair{percent}.2.fastq.gz overwrite=true""")
     subprocess.run(["chmod", "+x", "programs/down.sh"])
     subprocess.run(["bash", "./programs/down.sh"])
+    loading_gif("off", "down_do")
     return {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
           
 @callback(
@@ -602,10 +693,12 @@ def downsam_do(n_clicks, percent, data):
     prevent_initial_call=True
 )
 def mitfi_pair(n_clicks, data, ref, org):
+    loading_gif("on", "mitfi_ilu")
     data_1=data[0]
     data_2=data[1]
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
     subprocess.run(["python2", "programs/MitoFinder-master/mitofinder", "-j", name, "-1", data_1, "-2", data_2, "-r", ref, "-o", org, "--override"])
+    loading_gif("off", "mitfi_ilu")
     return dash.no_update
 
 @callback(
@@ -618,6 +711,7 @@ def mitfi_pair(n_clicks, data, ref, org):
     prevent_initial_call=True
 )
 def mitobim_nano(n_clicks, reference, file_name, kbait=31, iterations=10):
+    loading_gif("on", "mitobim_nano")
     file_name=file_name.split("/")[-1]
     path=os.getcwd()
     with open("programs/make_mitobim.sh", "w") as file:
@@ -643,6 +737,7 @@ def mitobim_nano(n_clicks, reference, file_name, kbait=31, iterations=10):
     
     subprocess.run(["sudo", "docker", "stop", container_id])
     subprocess.run(["sudo", "docker", "rm", container_id])
+    loading_gif("off", "mitobim_nano")
     return dash.no_update
     
 @callback(
@@ -655,6 +750,7 @@ def mitobim_nano(n_clicks, reference, file_name, kbait=31, iterations=10):
     prevent_initial_call=True
 )
 def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
+    loading_gif("on", "mitobim_ilu")
     file_name=(file_name[0]).split("/")[-1]
     path=os.getcwd()
     with open("programs/make_mitobim.sh", "w") as file:
@@ -680,6 +776,7 @@ def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
     
     subprocess.run(["sudo", "docker", "stop", container_id])
     subprocess.run(["sudo", "docker", "rm", container_id])
+    loading_gif("off", "mitobim_ilu")
     return dash.no_update
 
 @callback(
@@ -690,6 +787,7 @@ def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
     prevent_initial_call=True
 )    
 def novpla(n_clics, data, reference):
+    loading_gif("on", "novopla")
     czas=time.strftime("%d-%m-%Y_%H:%M:%S")
     name=((data[0].split("/")[-1]).split(".")[0]).split("_")[0]
     b = ["Project:",
@@ -732,6 +830,7 @@ def novpla(n_clics, data, reference):
     with open(f"programs/{czas}_Nconfig.txt", "w") as file:
         file.write("\n".join(b))
     subprocess.run(["perl","programs/NOVOplasty-master/NOVOPlasty4.3.1.pl", "-c",f"programs/{czas}_Nconfig.txt"])
+    loading_gif("off", "novopla")
     return dash.no_update
 
 def layout():
