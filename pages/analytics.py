@@ -89,7 +89,7 @@ contents = html.Div(children=[
         html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
                  id="qc_ilu",
                  style={"display":"none"}
-                 ),
+        ),
         html.Br(),
         html.Div(id="html_view_ilu",
                  children=[])
@@ -465,11 +465,11 @@ def loading_gif(on, box):
     states = ["qc_ilu", "merge", "qc_nano", "trim_nano", "trim_ilu", "mitobim_nano", "down_che","down_do", "mitfi_ilu", "mitobim_ilu", "novopla"] #, "mitfi_nano"
     if on == "on":
         for i in states:
-            if i == "box":
+            if i == box:
                 out.append({"display":"block"})
             else:
                 out.append({"display":"none"})
-        return out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9],out[10], out[11]#, out[12]
+        return out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9],out[10]#, out[11]
     else:
         return {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}, {"display":"none"}#, {"display":"none"}
 
