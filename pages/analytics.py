@@ -87,8 +87,7 @@ contents = html.Div(children=[
         ),
         html.Br(),
         html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
-                 id="qc_ilu",
-                 style={"display":"none"}
+                 id="qc_ilu"#,style={"display":"none"}
         ),
         html.Br(),
         html.Div(id="html_view_ilu",
@@ -697,7 +696,11 @@ def mitfi_pair(n_clicks, data, ref, org):
     data_1=data[0]
     data_2=data[1]
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
-    subprocess.run(["python2", "programs/MitoFinder-master/mitofinder", "-j", name, "-1", data_1, "-2", data_2, "-r", ref, "-o", org, "--override"])
+    subprocess.run(["cd", "output"])
+    subprocess.run(["conda", "activate", "MitFi"])
+    subprocess.run(["python", "../programs/MitoFinder-master/mitofinder", "-j", name, "-1", f"../{data_1}", "-2", f"../{data_2}", "-r", f"../{ref}", "-o", org, "--override"])
+    subprocess.run(["conda", "deactivate"])
+    subprocess.run(["cd", ".."])
     loading_gif("off", "mitfi_ilu")
     return dash.no_update
 
