@@ -86,9 +86,9 @@ contents = html.Div(children=[
             n_clicks = 0
         ),
         html.Br(),
-        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
-                 id="qc_ilu"#,style={"display":"none"}
-        ),
+        #html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
+        #         id="qc_ilu"#,style={"display":"none"}
+        #),
         html.Br(),
         html.Div(id="html_view_ilu",
                  children=[])
