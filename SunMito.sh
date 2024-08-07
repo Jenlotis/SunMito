@@ -1,6 +1,9 @@
 #!/bin/bash
-sudo apt-get install --assume-yes python-pip python3 python3-pip
+sudo apt-get install --assume-yes python3 python3-pip
+python3 -m venv sunmito
+source sunmito/bin/activate
 pip install dash
+pip install dash-bootstrap-components
 pip install numpy
 pip install pandas
 pip install plotly
@@ -25,3 +28,4 @@ sudo apt-get install --assume-yes r-base
 wget -P programs https://raw.githubusercontent.com/roblanf/minion_qc/master/MinIONQC.R
 sudo apt-get install --assume-yes docker.io
 python3 main.py
+deactivate
