@@ -50,8 +50,7 @@ contents = html.Div(children=[
         style = {'white-space':'pre'}
     ),
     html.Br(),
-    html.Div(
-        id="path_box",
+    html.Div(id="path_box",
         style = {"display":"none"},
         children=[ 
         html.H5("Choose which Path you want to take(can be multiple)"),
@@ -185,11 +184,24 @@ contents = html.Div(children=[
              children=[
         html.Br(),
         html.H5("Trimming"),
+        html.P("There will also be step that removes ilumina adapters, it will use deafult values for the programm"),
+        html.P("Remove leading bases that are chosen quality(when value is 0, bases won't be removed)"),
+        dcc.Input(id="ilu_leading",
+                  type="number",
+                  value=3,
+                  placeholder=3),
+        html.Br(),
+        html.P("Remove trailing bases that are below chosen quality(when value is 0, bases won't be removed)"),
+        dcc.Input(id="ilu_trailing",
+                  type="number",
+                  value=3,
+                  placeholder=3),
+        html.Br(),
         html.P("Choose sliding window score treshold"),
         dcc.Input(id="ilu_sw_tresh",
                   type="number",
-                  value=20,
-                  placeholder=20),
+                  value=15,
+                  placeholder=15),
         html.Br(),
         html.Br(),
         html.P("Choose minimum length of the sequence"),
@@ -269,15 +281,12 @@ contents = html.Div(children=[
              children=[
         html.Br(),         
         html.H5("Downsampling"),
+        #psutil.virtual_memory()[0]/1000000000
         html.P("Calculate to what percentage the cleaned data must be downsampled to fit within the functional limits for the MitoFinder"),
         html.Button(
             "Calculate estimate",
             id = "downsampling_check_button",
             n_clicks = 0
-        ),
-        html.Div(html.Img(src="assets/loading.gif", height=100, width=100),
-                 id="down_che",
-                 style={"display":"none"}
         ),
         html.Br(),
         html.P(id="down_text",
@@ -290,6 +299,7 @@ contents = html.Div(children=[
                   value="5",
                   style={"display":"none"}
         ),
+        html.Br(),
         html.Button(
             "Run downsampling",
             id = "downsampling_button",
@@ -304,6 +314,10 @@ contents = html.Div(children=[
     html.Div(id="mitfi_box",
              style={"display":"none"},
              children=[
+        html.Br(),
+        html.P(id="ram_text",
+            children=[]
+        ),
         html.Br(),
         html.H5("MitoFinder"),
         html.P("Select reference to analyze"),
@@ -600,14 +614,18 @@ def clean_nano(n_clicks, name, quality=15, min_len=300, max_len=50000000):
     Output("cleaned_ilu_dropdown", "options"),
     Output("mitobim_ilu_box", "style"),
     Output("downsampling_box", "style"),
+    Output("ram_text", "children"),
+    Output("mitfi_box", "style"),
     Input("trimming_ilu_button","n_clicks"),
     State("trim_ilu_dropdown", "value"),
     State("path_dropdown", "value"),
     State("ilu_sw_tresh", "value"),
     State("ilu_minlen", "value"),
+    State("ilu_leading","value"),
+    State("ilu_trailing","value"),
     prevent_initial_call=True
 )
-def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
+def clean_ilu(n_clicks, dane, path, sw_treshold=15, minlen=60, leading=3, trailing=3):
     loading_gif("on", "trim_ilu")
     dane_1=(dane[0].split("/")[-1]).split(".")[0]
     dane_2=(dane[1].split("/")[-1]).split(".")[0]
@@ -619,23 +637,30 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
         f"cleaned/{dane_1}_un.fastq.gz",
         f"cleaned/{dane_2}_out.fastq.gz",
         f"cleaned/{dane_2}_un.fastq.gz",
+        "ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True",
+        f"LEADING:{leading}",
+        f"TRAILING:{trailing}",
         f"SLIDINGWINDOW:4:{sw_treshold}",
         f"MINLEN:{minlen}"
     ])
-    options = [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
+    
     if ("mitofinder" in path) and ("mitobim" in path):
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
         loading_gif("off", "trim_ilu")
-        return options, {"display":"block"}, {"display":"block"}
+        if float(subprocess.run("free", capture_output=True, text=True).stdout.strip().split()[7])/1024**2 > 16:
+            return [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]], {"display":"block"}, dash.no_update, "This computer have more then 16GB of RAM so downsampling is not necessary", {"display":"block"}, 
+        else:
+            return [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]], {"display":"block"}, {"display":"block"}, dash.no_update, dash.no_update
     elif "mitobim" in path:
         dane_0=dane_1.split("_")[0]
         subprocess.run(["reformat.sh", f"in1=cleaned/{dane_1}_out.fastq.gz", f"in2=cleaned/{dane_2}_out.fastq.gz", f"out=cleaned/{dane_0}.out_inter.fastq.gz", "overwrite=true"])
         loading_gif("off", "trim_ilu")
-        return options, {"display":"block"}, {"display":"none"}
+        return [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]], {"display":"block"}, {"display":"none"}, dash.no_update, dash.no_update,
     else:
-        loading_gif("off", "trim_ilu")
-        return dash.no_update, dash.no_update, {"display":"block"}
+        if float(subprocess.run("free", capture_output=True, text=True).stdout.strip().split()[7])/1024**2 > 16:
+            return [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]], {"display":"block"}, dash.no_update, "This computer have more then 16GB of RAM so downsampling is not necessary", {"display":"block"}, 
+        return dash.no_update, dash.no_update, {"display":"block"}, dash.no_update, dash.no_update
         
 @callback(
     Output("down_text", "children"),
@@ -643,21 +668,20 @@ def clean_ilu(n_clicks, dane, path, sw_treshold=20, minlen=60):
     Output("percent", "placeholder"),
     Output("percent", "value"),
     Output("downsampling_button", "style"),
-    Output("mitfi_box", "style"),
+    Output("mitfi_box", "style", allow_duplicate=True),
     Output("mitfi_dropdown","options"),
     Input("downsampling_check_button", "n_clicks"),
     State("trim_ilu_dropdown", "value"),
     prevent_initial_call=True
 )
 def downsam_check(n_clicks, dane):
-    loading_gif("on", "down_che")
     dane_1=(dane[0].split("/")[-1]).split(".")[0]
     with open("programs/downsam_check.sh", "w") as file:
-        file.write(f"seqkit stats cleaned/{dane_1}_out.fastq.gz | awk -v dolari=\"{dane[0]}\" '$1~\"\"dolari\"\" {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
+        file.write(f"seqkit stats cleaned/{dane_1}_out.fastq.gz | awk -v dolari=\"{dane_1}\" '$1~dolari {{print $4}}' | sed 's/,//g' | awk '{{print 7000000/$1*100}}'")
     subprocess.run(["chmod", "+x", "programs/downsam_check.sh"])
-    procenty = run_subprocess(["bash", "./programs/downsam_check.sh"])
+    procenty = float(run_subprocess(["bash", "./programs/downsam_check.sh"]))
     # print(procenty)
-    if float(procenty) >= 80:
+    if procenty >= 80:
         loading_gif("off", "down_che")
         return f"Calculated percentage {procenty}% informs us that data is small enough for MitoFinder(≤7 000 000)", {"display":"none"}, dash.no_update, dash.no_update, dash.no_update, {"display":"block"}, [{'label': f'{clean}', 'value': f"{path_to_cleaned}/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk(path_to_cleaned) if file_names][0]]
     else:
@@ -677,7 +701,7 @@ def downsam_do(n_clicks, percent, data):
     name=((data[1].split("/")[-1]).split(".")[0]).split("_")[0]
     with open("programs/down.sh", "w") as file:
         file.write(f"""python2 programs/downsample.py -s {percent} --interleave -r {data[0]} -r {data[1]} | gzip > cleaned/{name}_{percent}.fastq.gz
-        reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair{percent}.1.fastq.gz out2=cleaned/{name}.down_pair{percent}.2.fastq.gz overwrite=true""")
+        reformat.sh int=t in=cleaned/{((data[1].split("/")[-1]).split(".")[0]).split("_")[0]}_{percent}.fastq.gz out1=cleaned/{name}.down_pair_{percent}.1.fastq.gz out2=cleaned/{name}.down_pair_{percent}.2.fastq.gz overwrite=true""")
     subprocess.run(["chmod", "+x", "programs/down.sh"])
     subprocess.run(["bash", "./programs/down.sh"])
     loading_gif("off", "down_do")
@@ -791,7 +815,7 @@ def mitobim_ilu(n_clicks, reference, file_name, kbait=31, iterations=10):
 )    
 def novpla(n_clics, data, reference):
     loading_gif("on", "novopla")
-    czas=time.strftime("%d-%m-%Y_%H:%M:%S")
+    czas=time.strftime("%d-%m-%Y_%H-%M-%S")
     name=((data[0].split("/")[-1]).split(".")[0]).split("_")[0]
     b = ["Project:",
      "-----------------------",
