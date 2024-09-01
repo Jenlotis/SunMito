@@ -445,7 +445,9 @@ contents = html.Div(children=[
     ]),
     html.Br(),
     html.Br(),
-    html.Div(id="empty"),
+    html.Br(),
+    html.Br(),
+    html.Br(),
     html.Br(),
     html.Br(),
 ])
@@ -826,7 +828,7 @@ def novpla(n_clics, data, reference):
      "Max memory            = 14",
      "Extended log          = 0",
      "Save assembled reads  = no",
-     f"Seed Input            = {reference}"
+     f"Seed Input            = {reference}",
      "Extend seed directly  = no",
      "Reference sequence    =",
      "Variance detection    =",
