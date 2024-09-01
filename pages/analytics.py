@@ -142,7 +142,7 @@ contents = html.Div(children=[
         html.Br(),
         html.Br(),
         html.H5("Trimming"),
-        html.P("Choose data to analyze"),
+        html.P("Choose data to trim"),
         dcc.Dropdown(
             options=[{'label': f'{clean}', 'value': f"data/long/{clean}"} for clean in [file_names for (dir_path, dir_names, file_names) in os.walk("data/long") if file_names][0]],
             id='nano_data_name',
@@ -282,7 +282,7 @@ contents = html.Div(children=[
         html.Br(),         
         html.H5("Downsampling"),
         #psutil.virtual_memory()[0]/1000000000
-        html.P("Calculate to what percentage the cleaned data must be downsampled to fit within the functional limits for the MitoFinder"),
+        html.P("Calculate to what percentage the cleaned data must be downsampled to fit within the safe limits for the MitoFinder"),
         html.Button(
             "Calculate estimate",
             id = "downsampling_check_button",
